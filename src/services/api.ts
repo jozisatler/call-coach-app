@@ -1,8 +1,8 @@
 export const analyzeTranscript = async (
   finalTranscript: string,
   onProgress: (status: string) => void
-): Promise<{ title: string, content: string }[]> => {
-  if (!finalTranscript.trim()) return [];
+): Promise<{ overallScore: number; feedback: { title: string, content: string }[] }> => {
+  if (!finalTranscript.trim()) return { overallScore: 0, feedback: [] };
   
   onProgress('Analyzing call transcript...');
   
@@ -12,7 +12,7 @@ export const analyzeTranscript = async (
       throw new Error("Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env");
     }
 
-    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON array of objects. There must be exactly 4 objects with the following "title"s in this exact order: "Strengths", "Areas for Improvements", "Communication Style", "First Biggest Mistake". The "content" field of each object should contain detailed, constructive feedback for that category in markdown. Do not include json backticks.`;
+    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON object with exactly two keys:\n1. "overallScore": a number between 0 and 100 rating the call's success.\n2. "feedback": a JSON array of exactly 4 objects with the following "title"s in this exact order: "Strengths", "Areas for Improvements", "Communication Style", "First Biggest Mistake". The "content" field of each object should contain detailed, constructive feedback for that category in markdown.\n\nDo not include json backticks.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
       method: 'POST',

@@ -14,12 +14,14 @@ const blobSize = Math.min(width * 0.55, 420);
 interface ProcessingScreenProps {
   base64Audio: string;
   onGoBack: () => void;
+  onPractice: () => void;
 }
 
-export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingScreenProps) {
+export default function ProcessingScreen({ base64Audio, onGoBack, onPractice }: ProcessingScreenProps) {
   const [status, setStatus] = useState('Initializing...');
   const [transcript, setTranscript] = useState('');
   const [feedback, setFeedback] = useState<{title: string, content: string}[]>([]);
+  const [overallScore, setOverallScore] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState('');
   const [showTranscript, setShowTranscript] = useState(false);
@@ -53,9 +55,10 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
         const text = await transcribeAudioBase64(base64Audio, (s) => mounted && setStatus(s));
         if (mounted) setTranscript(text);
         
-        const aiFeedback = await analyzeTranscript(text, (s) => mounted && setStatus(s));
+        const aiResult = await analyzeTranscript(text, (s) => mounted && setStatus(s));
         if (mounted) {
-          setFeedback(aiFeedback);
+          setOverallScore(aiResult.overallScore);
+          setFeedback(aiResult.feedback);
           setStatus('Analysis complete');
           setIsProcessing(false);
           
@@ -164,6 +167,13 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
           </ScrollView>
         ) : (
           <View style={{ flex: 1, paddingVertical: 40 }}>
+            {overallScore !== null && (
+              <View style={styles.scoreContainer}>
+                <Text style={styles.scoreLabel}>Overall Score</Text>
+                <Text style={styles.scoreValue}>{overallScore}<Text style={styles.scoreTotal}> / 100</Text></Text>
+              </View>
+            )}
+            
             {feedback.length > 0 && (
               <View>
                 <View style={[styles.cardHeader, { paddingHorizontal: 24 }]}>
@@ -187,7 +197,11 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
                 </View>
               )}
 
-              <Pressable onPress={handleBack} style={styles.footerButton}>
+              <Pressable onPress={onPractice} style={[styles.footerButton, styles.primaryButton]}>
+                <Text style={[styles.footerButtonText, styles.primaryButtonText]}>Practice Objections</Text>
+              </Pressable>
+
+              <Pressable onPress={handleBack} style={[styles.footerButton, { marginTop: 12 }]}>
                 <Text style={styles.footerButtonText}>Back to Home</Text>
               </Pressable>
             </ScrollView>
@@ -249,6 +263,10 @@ const styles = StyleSheet.create({
   swipeHint: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginLeft: 'auto', fontWeight: '500' },
   cardTitle: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
   transcriptText: { color: '#ffffff', fontSize: 15, lineHeight: 24 },
+  scoreContainer: { alignItems: 'center', marginBottom: 24 },
+  scoreLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8 },
+  scoreValue: { color: '#ffffff', fontSize: 56, fontWeight: '800', lineHeight: 60 },
+  scoreTotal: { color: 'rgba(255,255,255,0.4)', fontSize: 24, fontWeight: '700' },
   feedbackCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -282,7 +300,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  footerButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' }
+  footerButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  primaryButton: { backgroundColor: '#f5f5f5', borderColor: '#f5f5f5' },
+  primaryButtonText: { color: '#000' }
 });
 
 const markdownStyles = StyleSheet.create({

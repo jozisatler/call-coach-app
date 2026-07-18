@@ -4,9 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
+import PracticeScreen from './src/screens/PracticeScreen';
 import { colors } from './src/styles/shared';
 
-type Screen = 'home' | 'processing';
+type Screen = 'home' | 'processing' | 'practice';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -41,7 +42,15 @@ export default function App() {
         )}
 
         {currentScreen === 'processing' && base64Audio && (
-          <ProcessingScreen base64Audio={base64Audio} onGoBack={handleGoBack} />
+          <ProcessingScreen 
+            base64Audio={base64Audio} 
+            onGoBack={handleGoBack} 
+            onPractice={() => setCurrentScreen('practice')}
+          />
+        )}
+
+        {currentScreen === 'practice' && (
+          <PracticeScreen onGoBack={() => setCurrentScreen('processing')} />
         )}
 
         {/* Global Toast */}
