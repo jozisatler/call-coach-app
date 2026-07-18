@@ -180,7 +180,7 @@ export default function PracticeScreen({ onGoBack }: PracticeScreenProps) {
         ))}
         
         <Pressable onPress={onGoBack} style={styles.footerButton}>
-          <Text style={styles.footerButtonText}>Back to Results</Text>
+          <Text style={styles.footerButtonText}>Back to Home</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

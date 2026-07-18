@@ -50,7 +50,12 @@ export default function App() {
         )}
 
         {currentScreen === 'practice' && (
-          <PracticeScreen onGoBack={() => setCurrentScreen('processing')} />
+          <PracticeScreen 
+            onGoBack={() => {
+              setBase64Audio(null);
+              setCurrentScreen('home');
+            }} 
+          />
         )}
 
         {/* Global Toast */}
