@@ -142,25 +142,25 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
   return (
     <SafeAreaView style={sharedStyles.safeArea}>
       <Animated.View style={[sharedStyles.content, { justifyContent: 'space-between', opacity: fadeAnim }]}>
-        <View style={styles.header}>
-          <View>
-            <View style={sharedStyles.brandRow}>
+        <View>
+          <View style={styles.header}>
+            <View style={[sharedStyles.brandRow, { marginBottom: 0 }]}>
               <View style={sharedStyles.logoMark}>
                 <View style={sharedStyles.logoMarkInner} />
               </View>
               <Text style={sharedStyles.brandText}>CloseCoach</Text>
             </View>
-            <Text style={styles.headline}>
-              Train the call.{'\n'}Win the next one.
-            </Text>
-          </View>
-          
-          <View style={styles.profileContainer}>
-            <Text style={styles.profileGreeting}>Hello, John</Text>
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileInitials}>J</Text>
+            
+            <View style={styles.profileContainer}>
+              <Text style={styles.profileGreeting}>Hello, John</Text>
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileInitials}>J</Text>
+              </View>
             </View>
           </View>
+          <Text style={styles.headline}>
+            Train the call.{'\n'}Win the next one.
+          </Text>
         </View>
 
         <View style={styles.stage}>
@@ -240,17 +240,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   profileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
   },
   profileGreeting: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     marginRight: 12,
   },
   profileAvatar: {

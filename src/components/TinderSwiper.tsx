@@ -108,9 +108,21 @@ export default function TinderSwiper({ cards, markdownStyles }: TinderSwiperProp
           );
         }
 
+        const offset = idx - currentIndex;
+        const baseScale = Math.max(0.8, 1 - (offset * 0.05));
+        const nextScale = Math.max(0.8, 1 - ((offset - 1) * 0.05));
+        const baseTranslateY = offset * 14;
+        const nextTranslateY = (offset - 1) * 14;
+
         const scale = position.x.interpolate({
           inputRange: [-width / 2, 0, width / 2],
-          outputRange: [1, 0.95, 1],
+          outputRange: [nextScale, baseScale, nextScale],
+          extrapolate: 'clamp'
+        });
+
+        const translateY = position.x.interpolate({
+          inputRange: [-width / 2, 0, width / 2],
+          outputRange: [nextTranslateY, baseTranslateY, nextTranslateY],
           extrapolate: 'clamp'
         });
 
@@ -123,7 +135,7 @@ export default function TinderSwiper({ cards, markdownStyles }: TinderSwiperProp
         return (
           <Animated.View
             key={idx}
-            style={[styles.cardWrapper, { opacity: nextOpacity, transform: [{ scale }], zIndex: 90 - idx }]}
+            style={[styles.cardWrapper, { opacity: nextOpacity, transform: [{ scale }, { translateY }], zIndex: 90 - idx }]}
           >
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{item.title}</Text>

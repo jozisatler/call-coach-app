@@ -12,7 +12,7 @@ export const analyzeTranscript = async (
       throw new Error("Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env");
     }
 
-    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON array of objects, where each object has a "title" field (e.g., "Strengths", "Areas for Improvement") and a "content" field containing the detailed feedback. Do not include markdown formatting or json backticks.`;
+    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON array of objects. There must be exactly 4 objects with the following "title"s in this exact order: "Strengths", "Areas for Improvements", "Communication Style", "First Biggest Mistake". The "content" field of each object should contain detailed, constructive feedback for that category in markdown. Do not include json backticks.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -46,53 +46,45 @@ export const transcribeAudioBase64 = async (
   onProgress('Extracting voice data...');
   
   try {
-    const replicateKey = process.env.EXPO_PUBLIC_REPLICATE_API_KEY;
-    if (!replicateKey) {
-      throw new Error('Missing EXPO_PUBLIC_REPLICATE_API_KEY in .env');
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_AI_STUDIO;
+    if (!apiKey) {
+      throw new Error('Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env');
     }
     
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    console.log('Sending audio to Gemini for transcription...');
+    
+    const prompt = "Please transcribe this audio exactly as it is. Do not add any extra commentary, just the pure raw transcript of what is spoken.";
+    
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${replicateKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        version: "3ab86df6c8f54c11309d4d1f930ac292bad43ace52d10c80d87eb258b3c9f79c",
-        input: {
-          audio: `data:audio/m4a;base64,${base64Audio}`,
-          task: "transcribe",
-          language: "None"
-        }
+        contents: [{
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: "audio/m4a",
+                data: base64Audio
+              }
+            }
+          ]
+        }]
       })
     });
     
-    let prediction = await response.json();
+    console.log('Gemini Transcription response status:', response.status);
     
-    if (response.status !== 201 && response.status !== 200) {
-      throw new Error(`Error during transcription: ${prediction.detail || JSON.stringify(prediction)}`);
-    }
-
-    let pollUrl = prediction.urls.get;
-
-    while (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const pollResponse = await fetch(pollUrl, {
-        headers: {
-          'Authorization': `Bearer ${replicateKey}`
-        }
-      });
-      prediction = await pollResponse.json();
-      onProgress(`Processing audio...`);
-    }
-
-    if (prediction.status === 'succeeded') {
-      return prediction.output.text;
+    const data = await response.json();
+    
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      return data.candidates[0].content.parts[0].text;
     } else {
-      throw new Error(`Transcription failed: ${prediction.error}`);
+      console.error("Gemini Transcription Error:", data);
+      throw new Error("Could not transcribe audio via Gemini.");
     }
   } catch (e: any) {
     console.error(e);
-    throw new Error(`Error calling transcription service: ${e.message}`);
+    throw new Error(`Error calling Gemini transcription: ${e.message}`);
   }
 };

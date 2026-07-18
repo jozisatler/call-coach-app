@@ -48,6 +48,7 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
     });
     
     const processAudio = async () => {
+      console.log('Starting processAudio... Base64 length:', base64Audio.length);
       try {
         const text = await transcribeAudioBase64(base64Audio, (s) => mounted && setStatus(s));
         if (mounted) setTranscript(text);
@@ -149,7 +150,7 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
           <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {!error && (
               <View style={styles.processingState}>
-                <Text style={styles.statusTitle}>Analyzing Context</Text>
+                <Text style={styles.statusTitle}>Analyzing your call</Text>
                 <Text style={styles.statusText}>{status}</Text>
               </View>
             )}
