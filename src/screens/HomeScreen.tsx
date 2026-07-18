@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, SafeAreaView, StyleSheet, Animated } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mic, Upload, Square } from 'lucide-react-native';
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
@@ -20,6 +21,16 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
   const [samples, setSamples] = useState<number[]>(Array(MAX_SAMPLES).fill(0.05)); // baseline
 
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Screen fade in
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -59,7 +70,15 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
         setRecording(null);
         if (uri) {
           const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
-          onAudioReady(base64);
+          
+          // Fade out before transitioning
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            onAudioReady(base64);
+          });
         }
       }
     } else {
@@ -72,11 +91,13 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
         await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
         
         const options = {
-          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+          ...Audio.RecordingOptionsPresets.LOW_QUALITY,
           isMeteringEnabled: true,
         };
         
         const { recording: newRecording } = await Audio.Recording.createAsync(options);
+        
+        newRecording.setProgressUpdateInterval(50);
         
         newRecording.setOnRecordingStatusUpdate((status) => {
           if (status.metering !== undefined) {
@@ -101,7 +122,14 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
       if (!result.canceled && result.assets && result.assets.length > 0) {
         showToast(`Uploaded: ${result.assets[0].name}`);
         const base64 = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: 'base64' });
-        onAudioReady(base64);
+        
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          onAudioReady(base64);
+        });
       }
     } catch (err) {
       showToast('Upload canceled');
@@ -113,22 +141,29 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
 
   return (
     <SafeAreaView style={sharedStyles.safeArea}>
-      <View style={[sharedStyles.content, { justifyContent: 'space-between' }]}>
-        <View>
-          <View style={sharedStyles.brandRow}>
-            <View style={sharedStyles.logoMark}>
-              <View style={sharedStyles.logoMarkInner} />
+      <Animated.View style={[sharedStyles.content, { justifyContent: 'space-between', opacity: fadeAnim }]}>
+        <View style={styles.header}>
+          <View>
+            <View style={sharedStyles.brandRow}>
+              <View style={sharedStyles.logoMark}>
+                <View style={sharedStyles.logoMarkInner} />
+              </View>
+              <Text style={sharedStyles.brandText}>CloseCoach</Text>
             </View>
-            <Text style={sharedStyles.brandText}>CloseCoach</Text>
+            <Text style={styles.headline}>
+              Train the call.{'\n'}Win the next one.
+            </Text>
           </View>
-          <Text style={styles.headline}>
-            Train the call.{'\n'}Win the next one.
-          </Text>
+          
+          <View style={styles.profileContainer}>
+            <Text style={styles.profileGreeting}>Hello, John</Text>
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileInitials}>J</Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.stage}>
-          <View style={styles.orbit} />
-          
           <Pressable 
             onPress={toggleRecording}
             style={({ pressed }) => [styles.recordButtonWrapper, pressed && { transform: [{ scale: 0.95 }] }]}
@@ -149,7 +184,7 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
                   )}
                 </View>
                 
-                {isRecording ? (
+                               {isRecording ? (
                   <>
                     <Text style={styles.recordingLabel}>Recording</Text>
                     <Text style={styles.timerText}>{formatTime(seconds)}</Text>
@@ -196,65 +231,58 @@ export default function HomeScreen({ onAudioReady, showToast }: HomeScreenProps)
             <Text style={styles.cardChevron}>›</Text>
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headline: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -1.2,
-    lineHeight: 34,
-    width: 300,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  stage: {
-    flex: 1,
+  profileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  profileGreeting: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 12,
+  },
+  profileAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 280,
-  },
-  orbit: {
-    position: 'absolute',
-    width: 258,
-    height: 258,
     borderWidth: 1,
-    borderColor: 'rgba(115, 115, 115, 0.2)',
-    borderRadius: 129,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  recordButtonWrapper: { width: 184, height: 184, alignItems: 'center', justifyContent: 'center' },
-  pulseRing: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    borderWidth: 1, borderColor: 'rgba(245, 245, 245, 0.4)', borderRadius: 92,
+  profileInitials: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  coreButton: {
-    position: 'absolute', top: 22, left: 22, right: 22, bottom: 22,
-    borderRadius: 70, borderWidth: 1, alignItems: 'center', justifyContent: 'center',
-    shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10,
-  },
-  coreButtonReady: {
-    backgroundColor: colors.surface, borderColor: 'rgba(255, 255, 255, 0.1)', shadowColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  coreButtonRecording: {
-    backgroundColor: colors.surfacePressed, borderColor: 'rgba(115, 115, 115, 0.5)', shadowColor: 'rgba(0, 0, 0, 0.5)',
-  },
+  headline: { color: colors.text, fontSize: 32, fontWeight: '800', marginTop: 32, lineHeight: 40, letterSpacing: -1 },
+  stage: { alignItems: 'center', justifyContent: 'center', height: 300, position: 'relative' },
+  recordButtonWrapper: { alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  pulseRing: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' },
+  coreButton: { width: 160, height: 160, borderRadius: 80, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 10 },
+  coreButtonReady: { backgroundColor: colors.surface, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', shadowColor: '#000' },
+  coreButtonRecording: { backgroundColor: colors.surface, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', shadowColor: '#ffffff' },
   coreButtonContent: { alignItems: 'center', justifyContent: 'center' },
-  recordingLabel: { color: colors.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '700', marginBottom: 4 },
-  timerText: { color: colors.text, fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  readyText: { color: colors.text, fontSize: 14, fontWeight: '800', textAlign: 'center', lineHeight: 18 },
-  actions: { gap: 12 },
-  actionCard: {
-    width: '100%', minHeight: 74, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, borderRadius: 16,
-  },
-  actionCardPressed: { transform: [{ scale: 0.98 }], backgroundColor: colors.surfacePressed },
-  cardIcon: {
-    width: 44, height: 44, backgroundColor: colors.surfacePressed, borderWidth: 1,
-    borderColor: colors.borderLight, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16,
-  },
+  recordingLabel: { color: colors.text, fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
+  timerText: { color: 'rgba(255,255,255,0.8)', fontSize: 15, fontWeight: '600', marginTop: 4, fontVariant: ['tabular-nums'] },
+  readyText: { color: colors.text, fontSize: 13, fontWeight: '600', textAlign: 'center', lineHeight: 18, marginTop: 4 },
+  actions: { paddingBottom: 20 },
+  actionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' },
+  actionCardPressed: { backgroundColor: '#1f1f1f', borderColor: 'rgba(255, 255, 255, 0.15)' },
+  cardIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.05)', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   cardBody: { flex: 1 },
   cardTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
   cardSubtitle: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
@@ -269,13 +297,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 60,
-    marginTop: 40, // push it down below the circle
+    marginTop: 40, 
     gap: 3,
     width: '100%',
   },
   waveformBar: {
     width: 3,
-    backgroundColor: '#a78bfa',
+    backgroundColor: '#ffffff',
     borderRadius: 2,
   },
 });

@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Pressable, ActivityIndicator, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Animated, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Sparkles } from 'lucide-react-native';
 import Markdown from 'react-native-markdown-display';
 import { BlurView } from 'expo-blur';
 import { colors, sharedStyles } from '../styles/shared';
 import { analyzeTranscript, transcribeAudioBase64 } from '../services/api';
+import TinderSwiper from '../components/TinderSwiper';
 
 const { width } = Dimensions.get('window');
 const blobSize = Math.min(width * 0.55, 420);
@@ -17,11 +19,22 @@ interface ProcessingScreenProps {
 export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingScreenProps) {
   const [status, setStatus] = useState('Initializing...');
   const [transcript, setTranscript] = useState('');
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<{title: string, content: string}[]>([]);
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState('');
+  const [showTranscript, setShowTranscript] = useState(false);
 
   const anims = useRef(Array(10).fill(0).map(() => new Animated.Value(0))).current;
+  const screenOpacity = useRef(new Animated.Value(0)).current;
+  const gradientOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(screenOpacity, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [screenOpacity]);
 
   useEffect(() => {
     let mounted = true;
@@ -44,6 +57,13 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
           setFeedback(aiFeedback);
           setStatus('Analysis complete');
           setIsProcessing(false);
+          
+          // Fade out the gradient to create a clean, distinct "results" screen
+          Animated.timing(gradientOpacity, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }).start();
         }
       } catch (err: any) {
         if (mounted) {
@@ -98,9 +118,17 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
   const b10Y = anims[9].interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 18, 36, -28, 0] });
   const b10S = anims[9].interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 1.08, 1.15, 0.96, 1] });
 
+  const handleBack = () => {
+    Animated.timing(screenOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(onGoBack);
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={StyleSheet.absoluteFillObject}>
+    <Animated.View style={[styles.container, { opacity: screenOpacity }]}>
+      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: gradientOpacity }]}>
         <View style={styles.ambientContainer}>
           <Animated.View style={[styles.blob, styles.b1, { transform: [{ translateX: b1X }, { translateY: b1Y }, { scale: b1S }] }]} />
           <Animated.View style={[styles.blob, styles.b2, { transform: [{ translateX: b2X }, { translateY: b2Y }, { scale: b2S }] }]} />
@@ -114,52 +142,58 @@ export default function ProcessingScreen({ base64Audio, onGoBack }: ProcessingSc
           <Animated.View style={[styles.blob, styles.b10, { transform: [{ translateX: b10X }, { translateY: b10Y }, { scale: b10S }] }]} />
         </View>
         <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFillObject} />
-      </View>
+      </Animated.View>
 
       <SafeAreaView style={sharedStyles.safeArea}>
-        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {isProcessing && !error && (
-            <View style={styles.processingState}>
-              <View style={styles.spinnerContainer}>
-                <ActivityIndicator size="large" color="#ffffff" />
+        {isProcessing ? (
+          <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {!error && (
+              <View style={styles.processingState}>
+                <Text style={styles.statusTitle}>Analyzing Context</Text>
+                <Text style={styles.statusText}>{status}</Text>
               </View>
-              <Text style={styles.statusTitle}>Analyzing Context</Text>
-              <Text style={styles.statusText}>{status}</Text>
-            </View>
-          )}
+            )}
 
-          {error !== '' && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorTitle}>Error</Text>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {feedback !== '' && !isProcessing && !error && (
-            <View style={[styles.glassCard, styles.feedbackCard]}>
-              <View style={styles.cardHeader}>
-                <Sparkles size={16} color="#ffffff" />
-                <Text style={styles.cardTitlePremium}>AI Coach Feedback</Text>
+            {error !== '' && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorTitle}>Error</Text>
+                <Text style={styles.errorText}>{error}</Text>
               </View>
-              <Markdown style={markdownStyles}>{feedback}</Markdown>
-            </View>
-          )}
+            )}
+          </ScrollView>
+        ) : (
+          <View style={{ flex: 1, paddingVertical: 40 }}>
+            {feedback.length > 0 && (
+              <View>
+                <View style={[styles.cardHeader, { paddingHorizontal: 24 }]}>
+                  <Text style={styles.cardTitlePremium}>Feedback</Text>
+                </View>
+                
+                <TinderSwiper cards={feedback} markdownStyles={markdownStyles} />
+              </View>
+            )}
 
-          {transcript !== '' && !isProcessing && !error && (
-            <View style={[styles.glassCard, { marginTop: 24 }]}>
-              <Text style={styles.cardTitle}>Raw Transcript</Text>
-              <Text style={styles.transcriptText}>{transcript}</Text>
-            </View>
-          )}
+            <ScrollView style={{ flex: 1, marginTop: 24 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 80 }}>
+              {transcript !== '' && (
+                <View style={[styles.glassCard, { paddingVertical: 16 }]}>
+                  <Pressable onPress={() => setShowTranscript(!showTranscript)} style={styles.transcriptToggle}>
+                    <Text style={styles.cardTitle}>Transcript</Text>
+                    <Text style={styles.toggleText}>{showTranscript ? 'Hide' : 'Show transcript'}</Text>
+                  </Pressable>
+                  {showTranscript && (
+                    <Text style={[styles.transcriptText, { marginTop: 16 }]}>{transcript}</Text>
+                  )}
+                </View>
+              )}
 
-          {(!isProcessing || error !== '') && (
-            <Pressable onPress={onGoBack} style={styles.footerButton}>
-              <Text style={styles.footerButtonText}>Back to Home</Text>
-            </Pressable>
-          )}
-        </ScrollView>
+              <Pressable onPress={handleBack} style={styles.footerButton}>
+                <Text style={styles.footerButtonText}>Back to Home</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        )}
       </SafeAreaView>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -174,7 +208,7 @@ const styles = StyleSheet.create({
     width: blobSize,
     height: blobSize,
     borderRadius: blobSize / 2,
-    opacity: 0.8,
+    opacity: 0.4,
   },
   b1: { backgroundColor: '#ec4899', top: '-10%', left: '-5%' },
   b2: { backgroundColor: '#06b6d4', top: '-5%', right: '-10%' },
@@ -188,12 +222,12 @@ const styles = StyleSheet.create({
   b10: { backgroundColor: '#f43f5e', top: '45%', left: '10%' },
   
   scrollContainer: { flex: 1 },
-  scrollContent: { padding: 24, paddingBottom: 80, paddingTop: 40 },
+  scrollContent: { flexGrow: 1, padding: 24, paddingBottom: 80, paddingTop: 40 },
   
   processingState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 120,
   },
   spinnerContainer: {
     width: 80, height: 80, borderRadius: 40,
@@ -210,12 +244,29 @@ const styles = StyleSheet.create({
     borderRadius: 24, padding: 24,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  cardTitlePremium: { color: '#ffffff', fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, marginLeft: 8 },
-  cardTitle: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 },
+  cardTitlePremium: { color: '#ffffff', fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
+  swipeHint: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginLeft: 'auto', fontWeight: '500' },
+  cardTitle: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
   transcriptText: { color: '#ffffff', fontSize: 15, lineHeight: 24 },
   feedbackCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  transcriptToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  toggleText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  sectionTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
   },
   errorBox: { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.4)', borderWidth: 1, borderRadius: 16, padding: 20 },
   errorTitle: { color: '#f87171', fontWeight: '700', marginBottom: 8 },

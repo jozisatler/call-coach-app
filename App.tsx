@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
 import { colors } from './src/styles/shared';
@@ -28,27 +29,29 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      
-      {/* Background radial gradient simulation (shared) */}
-      <View style={styles.radialBackground} />
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        
+        {/* Background radial gradient simulation (shared) */}
+        <View style={styles.radialBackground} />
 
-      {currentScreen === 'home' && (
-        <HomeScreen onAudioReady={handleAudioReady} showToast={showToast} />
-      )}
+        {currentScreen === 'home' && (
+          <HomeScreen onAudioReady={handleAudioReady} showToast={showToast} />
+        )}
 
-      {currentScreen === 'processing' && base64Audio && (
-        <ProcessingScreen base64Audio={base64Audio} onGoBack={handleGoBack} />
-      )}
+        {currentScreen === 'processing' && base64Audio && (
+          <ProcessingScreen base64Audio={base64Audio} onGoBack={handleGoBack} />
+        )}
 
-      {/* Global Toast */}
-      {toastMessage !== '' && (
-        <View style={styles.toast}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </View>
-      )}
-    </View>
+        {/* Global Toast */}
+        {toastMessage !== '' && (
+          <View style={styles.toast}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        )}
+      </View>
+    </SafeAreaProvider>
   );
 }
 

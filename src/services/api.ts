@@ -1,8 +1,8 @@
 export const analyzeTranscript = async (
   finalTranscript: string,
   onProgress: (status: string) => void
-): Promise<string> => {
-  if (!finalTranscript.trim()) return '';
+): Promise<{ title: string, content: string }[]> => {
+  if (!finalTranscript.trim()) return [];
   
   onProgress('Analyzing call transcript...');
   
@@ -12,19 +12,23 @@ export const analyzeTranscript = async (
       throw new Error("Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env");
     }
 
-    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"`;
+    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON array of objects, where each object has a "title" field (e.g., "Strengths", "Areas for Improvement") and a "content" field containing the detailed feedback. Do not include markdown formatting or json backticks.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+        }
       })
     });
 
     const data = await response.json();
     if (data.candidates && data.candidates[0].content.parts[0].text) {
-      return data.candidates[0].content.parts[0].text;
+      const rawText = data.candidates[0].content.parts[0].text;
+      return JSON.parse(rawText);
     } else {
       console.error("Gemini API Error:", data);
       throw new Error("Could not generate feedback.");
