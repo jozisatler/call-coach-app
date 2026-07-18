@@ -184,26 +184,27 @@ export default function ProcessingScreen({ base64Audio, onGoBack, onPractice }: 
               </View>
             )}
 
-            <ScrollView style={{ flex: 1, marginTop: 24 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 80 }}>
-              {transcript !== '' && (
-                <View style={[styles.glassCard, { paddingVertical: 16 }]}>
-                  <Pressable onPress={() => setShowTranscript(!showTranscript)} style={styles.transcriptToggle}>
-                    <Text style={styles.cardTitle}>Transcript</Text>
-                    <Text style={styles.toggleText}>{showTranscript ? 'Hide' : 'Show transcript'}</Text>
-                  </Pressable>
-                  {showTranscript && (
-                    <Text style={[styles.transcriptText, { marginTop: 16 }]}>{transcript}</Text>
-                  )}
+            <ScrollView style={{ flex: 1, marginTop: 24 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 160 }}>
+              {showTranscript && transcript !== '' && (
+                <View style={[styles.glassCard, { paddingVertical: 16, marginBottom: 16 }]}>
+                  <Text style={styles.cardTitlePremium}>Transcript</Text>
+                  <Text style={[styles.transcriptText, { marginTop: 16 }]}>{transcript}</Text>
                 </View>
               )}
 
-              <Pressable onPress={onPractice} style={[styles.footerButton, styles.primaryButton]}>
-                <Text style={[styles.footerButtonText, styles.primaryButtonText]}>Practice Objections</Text>
-              </Pressable>
+              <View style={styles.bottomRow}>
+                <Pressable onPress={onPractice} style={[styles.rowButton, styles.primaryButton]}>
+                  <Text style={[styles.rowButtonText, styles.primaryButtonText]}>Practice</Text>
+                </Pressable>
+                
+                <Pressable onPress={() => setShowTranscript(!showTranscript)} style={styles.rowButton}>
+                  <Text style={styles.rowButtonText}>Transcript</Text>
+                </Pressable>
 
-              <Pressable onPress={handleBack} style={[styles.footerButton, { marginTop: 12 }]}>
-                <Text style={styles.footerButtonText}>Back to Home</Text>
-              </Pressable>
+                <Pressable onPress={handleBack} style={styles.rowButton}>
+                  <Text style={styles.rowButtonText}>Home</Text>
+                </Pressable>
+              </View>
             </ScrollView>
           </View>
         )}
@@ -291,16 +292,26 @@ const styles = StyleSheet.create({
   errorTitle: { color: '#f87171', fontWeight: '700', marginBottom: 8 },
   errorText: { color: '#ffffff', lineHeight: 22 },
   
-  footerButton: {
-    marginTop: 40,
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 16,
+  },
+  rowButton: {
+    flex: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  footerButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  rowButtonText: {
+    color: '#fff', 
+    fontSize: 14, 
+    fontWeight: '700'
+  },
   primaryButton: { backgroundColor: '#f5f5f5', borderColor: '#f5f5f5' },
   primaryButtonText: { color: '#000' }
 });

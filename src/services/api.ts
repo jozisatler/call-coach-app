@@ -28,7 +28,8 @@ export const analyzeTranscript = async (
     const data = await response.json();
     if (data.candidates && data.candidates[0].content.parts[0].text) {
       const rawText = data.candidates[0].content.parts[0].text;
-      return JSON.parse(rawText);
+      const cleanText = rawText.replace(/```(?:json)?/g, "").trim();
+      return JSON.parse(cleanText);
     } else {
       console.error("Gemini API Error:", data);
       throw new Error("Could not generate feedback.");
@@ -86,5 +87,91 @@ export const transcribeAudioBase64 = async (
   } catch (e: any) {
     console.error(e);
     throw new Error(`Error calling Gemini transcription: ${e.message}`);
+  }
+};
+
+export const evaluateObjectionResponse = async (
+  base64Audio: string,
+  objection: string,
+  hint: string
+): Promise<{ pass: boolean; feedback: string }> => {
+  try {
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_AI_STUDIO;
+    if (!apiKey) {
+      throw new Error('Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env');
+    }
+    
+    const prompt = `You are a sales coach grading an objection-handling rep. The user sells
+high-ticket B2B services to small-business owners and is training to respond
+to resistance with calm, curious QUESTIONS — never pressure or justification.
+
+The customer's objection was: "${objection}"
+The recommended strategy was: "${hint}"
+
+Listen to the user's recorded audio response and grade it against these rules.
+
+PASS requires BOTH:
+1. Substance — the response leads with a genuine question about the
+   customer's evidence, math, criteria, or decision process (e.g. "when you
+   compared, what did you measure it against?"), OR cleanly isolates the
+   objection ("setting price aside — does this solve the problem?"). Calm
+   agreement followed by a redirect question also passes ("Fair. Quick
+   question though—").
+2. Delivery — tone is calm, curious, unhurried. Like a doctor discussing a
+   diagnosis, not a vendor chasing a deal.
+
+INSTANT FAIL if the response contains ANY of:
+- Justifying or defending the price/product instead of asking a question
+- A verdict about the customer ("you don't understand", "you're wrong",
+  "trust me") or any pressure/ultimatum
+- Offering a discount or cheaper option unprompted
+- Apologizing for the ask, or offering the exit ("no worries if not")
+- Feature-dumping or a monologue with no question in it
+- Needy delivery: rushed, over-explaining, trailing off
+
+FEEDBACK rules: max 2 sentences. Quote or paraphrase the user's exact words
+at the moment that decided the grade. On fail, give the one line they should
+have said instead. On pass, name the specific move that earned it so they
+can repeat it. Judge delivery (pace, filler, tone) as well as wording.
+
+Return a JSON object with exactly two keys:
+1. "pass": a boolean indicating if the user successfully handled the objection.
+2. "feedback": a short string of constructive feedback on their specific
+   delivery and wording.
+Do not include json backticks.`;
+    
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: "audio/m4a",
+                data: base64Audio
+              }
+            }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: "application/json",
+        }
+      })
+    });
+    
+    const data = await response.json();
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      const rawText = data.candidates[0].content.parts[0].text;
+      const cleanText = rawText.replace(/```(?:json)?/g, "").trim();
+      return JSON.parse(cleanText);
+    } else {
+      console.error("Gemini Evaluation Error:", data);
+      throw new Error("Could not evaluate response.");
+    }
+  } catch (e: any) {
+    console.error(e);
+    throw new Error(`Error calling Gemini evaluation: ${e.message}`);
   }
 };
