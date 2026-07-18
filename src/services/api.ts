@@ -14,18 +14,27 @@ export const analyzeTranscript = async (
 
     const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON object with exactly two keys:\n1. "overallScore": a number between 0 and 100 rating the call's success.\n2. "feedback": a JSON array of exactly 4 objects with the following "title"s in this exact order: "Strengths", "Areas for Improvements", "Communication Style", "First Biggest Mistake". The "content" field of each object should contain detailed, constructive feedback for that category in markdown.\n\nDo not include json backticks.`;
 
+    console.log('Sending text to Gemini for analysis... prompt length:', prompt.length);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        }
-      })
+        contents: [{ parts: [{ text: prompt }] }]
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
+    console.log('Gemini Analysis response status:', response.status);
+
     const data = await response.json();
+    console.log('Gemini Analysis data received. Success?', !!data.candidates);
+
     if (data.candidates && data.candidates[0].content.parts[0].text) {
       const rawText = data.candidates[0].content.parts[0].text;
       const cleanText = rawText.replace(/```(?:json)?/g, "").trim();
@@ -140,6 +149,9 @@ Return a JSON object with exactly two keys:
    delivery and wording.
 Do not include json backticks.`;
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -154,12 +166,12 @@ Do not include json backticks.`;
               }
             }
           ]
-        }],
-        generationConfig: {
-          responseMimeType: "application/json",
-        }
-      })
+        }]
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
     
     const data = await response.json();
     if (data.candidates && data.candidates[0].content.parts[0].text) {

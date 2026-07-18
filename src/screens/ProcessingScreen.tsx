@@ -186,23 +186,31 @@ export default function ProcessingScreen({ base64Audio, onGoBack, onPractice }: 
 
             <ScrollView style={{ flex: 1, marginTop: 24 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 160 }}>
               {showTranscript && transcript !== '' && (
-                <View style={[styles.glassCard, { paddingVertical: 16, marginBottom: 16 }]}>
-                  <Text style={styles.cardTitlePremium}>Transcript</Text>
-                  <Text style={[styles.transcriptText, { marginTop: 16 }]}>{transcript}</Text>
+                <View style={styles.glassCardWrapper}>
+                  <BlurView intensity={40} tint="dark" style={styles.glassCard}>
+                    <Text style={styles.cardTitlePremium}>Transcript</Text>
+                    <Text style={[styles.transcriptText, { marginTop: 16 }]}>{transcript}</Text>
+                  </BlurView>
                 </View>
               )}
 
               <View style={styles.bottomRow}>
-                <Pressable onPress={onPractice} style={[styles.rowButton, styles.primaryButton]}>
-                  <Text style={[styles.rowButtonText, styles.primaryButtonText]}>Practice</Text>
+                <Pressable onPress={onPractice} style={[styles.rowButtonWrapper, styles.primaryButtonWrapper]}>
+                  <BlurView intensity={40} tint="light" style={styles.rowButton}>
+                    <Text style={[styles.rowButtonText, styles.primaryButtonText]}>Practice</Text>
+                  </BlurView>
                 </Pressable>
                 
-                <Pressable onPress={() => setShowTranscript(!showTranscript)} style={styles.rowButton}>
-                  <Text style={styles.rowButtonText}>Transcript</Text>
+                <Pressable onPress={() => setShowTranscript(!showTranscript)} style={styles.rowButtonWrapper}>
+                  <BlurView intensity={40} tint="dark" style={styles.rowButton}>
+                    <Text style={styles.rowButtonText}>Transcript</Text>
+                  </BlurView>
                 </Pressable>
 
-                <Pressable onPress={handleBack} style={styles.rowButton}>
-                  <Text style={styles.rowButtonText}>Home</Text>
+                <Pressable onPress={handleBack} style={styles.rowButtonWrapper}>
+                  <BlurView intensity={40} tint="dark" style={styles.rowButton}>
+                    <Text style={styles.rowButtonText}>Home</Text>
+                  </BlurView>
                 </Pressable>
               </View>
             </ScrollView>
@@ -254,10 +262,15 @@ const styles = StyleSheet.create({
   statusTitle: { color: '#ffffff', fontSize: 24, fontWeight: '700', marginBottom: 8, letterSpacing: -0.5 },
   statusText: { color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: '500' },
   
+  glassCardWrapper: {
+    borderRadius: 24, 
+    overflow: 'hidden',
+    borderWidth: 1, 
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    marginBottom: 16,
+  },
   glassCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 24, padding: 24,
+    padding: 24,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   cardTitlePremium: { color: '#ffffff', fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 },
@@ -298,21 +311,26 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 16,
   },
-  rowButton: {
+  rowButtonWrapper: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+  },
+  rowButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
   },
   rowButtonText: {
     color: '#fff', 
     fontSize: 14, 
     fontWeight: '700'
   },
-  primaryButton: { backgroundColor: '#f5f5f5', borderColor: '#f5f5f5' },
+  primaryButtonWrapper: { 
+    borderColor: '#f5f5f5', 
+    backgroundColor: '#f5f5f5',
+  },
   primaryButtonText: { color: '#000' }
 });
 
