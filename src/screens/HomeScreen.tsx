@@ -13,11 +13,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus } from 'lucide-react-native';
 import { Effect, EffectCategory } from '../types';
-import { CATEGORIES, getEffectById, getEffectsByCategory, SURPRISE_EFFECT_ID } from '../data/effects';
+import {
+  FEED_TABS,
+  STYLE_CHIPS,
+  getEffectById,
+  getEffectsByCategory,
+  getEffectsByStyleChip,
+  SURPRISE_EFFECT_ID,
+} from '../data/effects';
 import EffectCard from '../components/EffectCard';
 import SurpriseMeCard from '../components/SurpriseMeCard';
 import { CardOrigin } from '../components/ExpandCardOverlay';
-import { HomeIcon, CameraIcon, UserIcon } from '../components/TabIcons';
+import { HomeIcon, CameraIcon, UserIcon, SearchIcon } from '../components/TabIcons';
 import { colors, sharedStyles } from '../styles/shared';
 
 const CREATE_BORDER_COLORS = [
@@ -80,6 +87,7 @@ interface HomeScreenProps {
   onSelectEffect: (effect: Effect, origin: CardOrigin) => void;
   onCreateEffect: () => void;
   onProfilePress?: () => void;
+  onSearchPress?: () => void;
 }
 
 /** Cycle of shapes so the feed never feels like a uniform brick wall. */
@@ -90,6 +98,10 @@ type MasonryItem = {
   aspectRatio: number;
   estimatedHeight: number;
 };
+
+type BrowseMode =
+  | { kind: 'feed'; id: EffectCategory }
+  | { kind: 'style'; id: string };
 
 function buildMasonryColumns(
   effects: Effect[],
@@ -121,14 +133,18 @@ export default function HomeScreen({
   onSelectEffect,
   onCreateEffect,
   onProfilePress,
+  onSearchPress,
 }: HomeScreenProps) {
-  const [category, setCategory] = useState<EffectCategory | 'all'>('all');
+  const [mode, setMode] = useState<BrowseMode>({ kind: 'feed', id: 'trending' });
   const { width } = useWindowDimensions();
   const gap = 12;
   const horizontalPad = 20;
   const columnWidth = (width - horizontalPad * 2 - gap) / 2;
 
-  const effects = useMemo(() => getEffectsByCategory(category), [category]);
+  const effects = useMemo(() => {
+    if (mode.kind === 'feed') return getEffectsByCategory(mode.id);
+    return getEffectsByStyleChip(mode.id);
+  }, [mode]);
   const surpriseEffect = useMemo(() => getEffectById(SURPRISE_EFFECT_ID), []);
   const columns = useMemo(
     () => buildMasonryColumns(effects, columnWidth),
@@ -139,32 +155,9 @@ export default function HomeScreen({
     <SafeAreaView style={sharedStyles.safeArea} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <Text style={styles.brand}>Story Snap</Text>
+          <Text style={styles.brand}>Story Snap!</Text>
           <CreateEffectButton onPress={onCreateEffect} />
         </View>
-      </View>
-
-      <View style={styles.tabsWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabs}
-        >
-          {CATEGORIES.map((item) => {
-            const active = category === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => setCategory(item.id)}
-                style={[styles.tab, active && styles.tabActive]}
-              >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
       </View>
 
       <View style={styles.feedWrap}>
@@ -205,6 +198,104 @@ export default function HomeScreen({
             <Text style={styles.empty}>No effects in this category yet.</Text>
           )}
         </ScrollView>
+
+        <View pointerEvents="box-none" style={styles.filtersOverlay}>
+          <LinearGradient
+            pointerEvents="none"
+            colors={['#000', 'rgba(0,0,0,0.92)', 'rgba(0,0,0,0.55)', 'transparent']}
+            locations={[0, 0.35, 0.7, 1]}
+            style={styles.filtersGradient}
+          />
+
+          <View style={styles.feedTabsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.feedTabs}
+            >
+              <Pressable
+                onPress={onSearchPress}
+                style={({ pressed }) => [pressed && styles.searchBtnPressed]}
+                hitSlop={8}
+              >
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.16)', 'rgba(0,0,0,0.82)']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.searchBtn}
+                >
+                  <SearchIcon size={18} color={colors.text} strokeWidth={1.8} />
+                </LinearGradient>
+              </Pressable>
+
+              {FEED_TABS.map((item) => {
+                const active = mode.kind === 'feed' && mode.id === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => setMode({ kind: 'feed', id: item.id })}
+                  >
+                    <LinearGradient
+                      colors={
+                        active
+                          ? [colors.accent, '#d4cfc4']
+                          : ['rgba(255,255,255,0.16)', 'rgba(0,0,0,0.82)']
+                      }
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={[styles.feedTab, active && styles.feedTabActive]}
+                    >
+                      <Text style={[styles.feedTabText, active && styles.feedTabTextActive]}>
+                        {item.label}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <View style={styles.styleChipsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.styleChips}
+            >
+              {STYLE_CHIPS.map((item) => {
+                const active = mode.kind === 'style' && mode.id === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => setMode({ kind: 'style', id: item.id })}
+                  >
+                    <LinearGradient
+                      colors={
+                        active
+                          ? [item.color, item.color]
+                          : [item.soft, 'rgba(0,0,0,0.78)']
+                      }
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={[
+                        styles.styleChip,
+                        { borderColor: active ? item.color : 'rgba(255,255,255,0.12)' },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.styleChipText,
+                          { color: active ? item.textActive : item.text },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </LinearGradient>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
 
         <LinearGradient
           pointerEvents="none"
@@ -256,6 +347,19 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     flexShrink: 1,
   },
+  searchBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  searchBtnPressed: {
+    opacity: 0.8,
+  },
   createBtnOuter: {
     borderRadius: 999,
   },
@@ -296,44 +400,78 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  tabsWrap: {
-    marginTop: 16,
-    marginBottom: 4,
-    height: 48,
+  filtersOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 2,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  filtersGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 160,
+  },
+  feedTabsWrap: {
+    marginTop: 6,
+    height: 40,
     justifyContent: 'center',
   },
-  tabs: {
+  feedTabs: {
     paddingHorizontal: 20,
     gap: 8,
     alignItems: 'center',
-    height: 48,
+    height: 40,
   },
-  tab: {
+  feedTab: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
-  tabActive: {
-    backgroundColor: colors.accent,
+  feedTabActive: {
     borderColor: colors.accent,
   },
-  tabText: {
+  feedTabText: {
     color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
+    fontSize: 14,
+    fontWeight: '700',
   },
-  tabTextActive: {
+  feedTabTextActive: {
     color: colors.bg,
+  },
+  styleChipsWrap: {
+    marginTop: 10,
+    marginBottom: 4,
+    height: 40,
+    justifyContent: 'center',
+  },
+  styleChips: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: 'center',
+    height: 40,
+  },
+  styleChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  styleChipText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   list: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 112,
     paddingBottom: 120,
   },
   masonry: {
@@ -347,6 +485,7 @@ const styles = StyleSheet.create({
   },
   feedWrap: {
     flex: 1,
+    position: 'relative',
   },
   bottomGradient: {
     position: 'absolute',
@@ -354,12 +493,14 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 140,
+    zIndex: 2,
   },
   bottomBarSafe: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 3,
   },
   bottomBar: {
     flexDirection: 'row',

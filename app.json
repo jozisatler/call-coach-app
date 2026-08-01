@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Story Snap",
+    "name": "Story Snap!",
     "slug": "story-snap",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -42,8 +42,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow Story Snap to save edited photos to your library.",
-          "savePhotosPermission": "Allow Story Snap to save edited photos to your library.",
+          "photosPermission": "Allow Story Snap! to save edited photos to your library.",
+          "savePhotosPermission": "Allow Story Snap! to save edited photos to your library.",
           "isAccessMediaLocationEnabled": false
         }
       ]

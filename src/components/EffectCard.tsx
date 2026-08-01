@@ -1,8 +1,10 @@
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Effect } from '../types';
 import { formatUses } from '../data/effects';
 import BeforeAfterPeek from './BeforeAfterPeek';
+import { PhotoIcon } from './TabIcons';
 import { colors } from '../styles/shared';
 import { CardOrigin } from './ExpandCardOverlay';
 
@@ -49,10 +51,18 @@ export default function EffectCard({
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.tryBtn, pressed && styles.tryBtnPressed]}
+          style={({ pressed }) => [pressed && styles.photoBtnPressed]}
           onPress={handleTry}
+          hitSlop={6}
         >
-          <Text style={styles.tryBtnText}>Try</Text>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.14)', 'rgba(0,0,0,0.82)']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.photoBtn}
+          >
+            <PhotoIcon size={16} color={colors.text} strokeWidth={1.8} />
+          </LinearGradient>
         </Pressable>
       </View>
     </View>
@@ -86,18 +96,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
-  tryBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: colors.accent,
+  photoBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
-  tryBtnPressed: {
+  photoBtnPressed: {
     opacity: 0.85,
-  },
-  tryBtnText: {
-    color: colors.bg,
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

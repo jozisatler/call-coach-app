@@ -1,5 +1,85 @@
 import { Effect, EffectCategory } from '../types';
 
+export const FEED_TABS: { id: EffectCategory; label: string }[] = [
+  { id: 'trending', label: 'Trending' },
+  { id: 'popular', label: 'Popular' },
+  { id: 'new', label: 'New' },
+];
+
+export const STYLE_CHIPS: {
+  id: string;
+  label: string;
+  color: string;
+  soft: string;
+  text: string;
+  textActive: string;
+  effectIds?: string[];
+}[] = [
+  {
+    id: 'all',
+    label: 'All',
+    color: '#e8e4dc',
+    soft: 'rgba(232,228,220,0.42)',
+    text: '#e8e4dc',
+    textActive: '#0c0c0c',
+  },
+  {
+    id: 'glow',
+    label: 'Glow',
+    color: '#74c0fc',
+    soft: 'rgba(116,192,252,0.42)',
+    text: '#a5d8ff',
+    textActive: '#062033',
+    effectIds: ['aura-glow'],
+  },
+  {
+    id: 'cute',
+    label: 'Cute',
+    color: '#ffa8cc',
+    soft: 'rgba(255,168,204,0.42)',
+    text: '#ffc9de',
+    textActive: '#3b0a1f',
+    effectIds: ['plush-subject'],
+  },
+  {
+    id: 'retro',
+    label: 'Retro',
+    color: '#ffc078',
+    soft: 'rgba(255,192,120,0.42)',
+    text: '#ffd8a8',
+    textActive: '#3b1f00',
+    effectIds: ['polaroid-flash'],
+  },
+  {
+    id: 'art',
+    label: 'Art',
+    color: '#b197fc',
+    soft: 'rgba(177,151,252,0.42)',
+    text: '#d0bfff',
+    textActive: '#1e0b3d',
+    effectIds: ['double-exposure'],
+  },
+  {
+    id: 'blocky',
+    label: '3D',
+    color: '#8ce99a',
+    soft: 'rgba(140,233,154,0.42)',
+    text: '#b2f2bb',
+    textActive: '#052410',
+    effectIds: ['voxel-subject'],
+  },
+  {
+    id: 'moody',
+    label: 'Moody',
+    color: '#ced4da',
+    soft: 'rgba(206,212,218,0.42)',
+    text: '#dee2e6',
+    textActive: '#141618',
+    effectIds: ['film-noir'],
+  },
+];
+
+/** @deprecated use FEED_TABS + STYLE_CHIPS */
 export const CATEGORIES: { id: EffectCategory | 'all'; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'trending', label: 'Trending' },
@@ -90,6 +170,13 @@ export const EFFECTS: Effect[] = [
 export function getEffectsByCategory(category: EffectCategory | 'all'): Effect[] {
   if (category === 'all') return EFFECTS;
   return EFFECTS.filter((effect) => effect.categories.includes(category));
+}
+
+export function getEffectsByStyleChip(chipId: string): Effect[] {
+  if (chipId === 'all') return EFFECTS;
+  const chip = STYLE_CHIPS.find((item) => item.id === chipId);
+  if (!chip?.effectIds?.length) return EFFECTS;
+  return EFFECTS.filter((effect) => chip.effectIds!.includes(effect.id));
 }
 
 export function getEffectById(id: string): Effect | undefined {

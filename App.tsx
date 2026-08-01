@@ -97,6 +97,7 @@ export default function App() {
               onSelectEffect={handleSelectEffect}
               onCreateEffect={() => setScreen({ name: 'create' })}
               onProfilePress={() => showToast('Profile coming soon')}
+              onSearchPress={() => showToast('Search coming soon')}
             />
           )}
 
