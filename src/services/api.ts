@@ -24,10 +24,10 @@ Rules:
 - Do not add text overlays or watermarks.
 - Return only the edited image.`;
 
-  console.log('[Effectory] Applying effect:', effectName);
-  console.log('[Effectory] Effect prompt:\n', effectPrompt);
-  console.log('[Effectory] Full prompt sent to Gemini:\n', prompt);
-  console.log('[Effectory] Image mimeType:', mimeType, '| base64 length:', imageBase64.length);
+  console.log('[Story Snap] Applying effect:', effectName);
+  console.log('[Story Snap] Effect prompt:\n', effectPrompt);
+  console.log('[Story Snap] Full prompt sent to Gemini:\n', prompt);
+  console.log('[Story Snap] Image mimeType:', mimeType, '| base64 length:', imageBase64.length);
 
   onProgress?.('Applying effect...');
 
@@ -67,14 +67,14 @@ Rules:
     const data = await response.json();
 
     if (!response.ok) {
-      console.log('[Effectory] Gemini error response:', JSON.stringify(data, null, 2));
+      console.log('[Story Snap] Gemini error response:', JSON.stringify(data, null, 2));
       const message = data?.error?.message || `Gemini request failed (${response.status})`;
       throw new Error(message);
     }
 
     const parts = data?.candidates?.[0]?.content?.parts;
     if (!Array.isArray(parts)) {
-      console.log('[Effectory] Unexpected Gemini payload:', JSON.stringify(data, null, 2));
+      console.log('[Story Snap] Unexpected Gemini payload:', JSON.stringify(data, null, 2));
       throw new Error('No image returned from Gemini.');
     }
 
@@ -83,19 +83,19 @@ Rules:
     );
 
     if (!imagePart?.inlineData?.data) {
-      console.log('[Effectory] No inline image in parts:', JSON.stringify(parts.map((p: any) => ({ hasText: !!p.text, hasInline: !!p.inlineData })), null, 2));
+      console.log('[Story Snap] No inline image in parts:', JSON.stringify(parts.map((p: any) => ({ hasText: !!p.text, hasInline: !!p.inlineData })), null, 2));
       throw new Error('Gemini did not return an edited image. Try another photo.');
     }
 
     onProgress?.('Finishing up...');
-    console.log('[Effectory] Effect applied successfully:', effectName);
+    console.log('[Story Snap] Effect applied successfully:', effectName);
 
     return {
       base64: imagePart.inlineData.data,
       mimeType: imagePart.inlineData.mimeType || 'image/png',
     };
   } catch (error: any) {
-    console.log('[Effectory] applyEffectToImage failed:', error?.message || error);
+    console.log('[Story Snap] applyEffectToImage failed:', error?.message || error);
     if (error?.name === 'AbortError') {
       throw new Error('Effect timed out. Please try again.');
     }

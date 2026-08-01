@@ -96,6 +96,7 @@ export default function App() {
             <HomeScreen
               onSelectEffect={handleSelectEffect}
               onCreateEffect={() => setScreen({ name: 'create' })}
+              onProfilePress={() => showToast('Profile coming soon')}
             />
           )}
 

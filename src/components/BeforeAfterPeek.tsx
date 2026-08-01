@@ -28,7 +28,6 @@ export default function BeforeAfterPeek({
   showHint = false,
 }: BeforeAfterPeekProps) {
   const [peeking, setPeeking] = useState(false);
-  const [ready, setReady] = useState(false);
   const peekAnim = useRef(new Animated.Value(0)).current;
   const hintAnim = useRef(new Animated.Value(1)).current;
 
@@ -52,18 +51,13 @@ export default function BeforeAfterPeek({
       onPressIn={() => setPeeking(true)}
       onPressOut={() => setPeeking(false)}
       style={[styles.wrap, { aspectRatio, borderRadius }]}
-      onLayout={() => setReady(true)}
     >
-      {ready && (
-        <>
-          <Image source={afterSource} style={styles.image} resizeMode="cover" />
-          <Animated.Image
-            source={beforeSource}
-            style={[styles.image, styles.overlay, { opacity: peekAnim }]}
-            resizeMode="cover"
-          />
-        </>
-      )}
+      <Image source={afterSource} style={styles.image} resizeMode="cover" />
+      <Animated.Image
+        source={beforeSource}
+        style={[styles.image, styles.overlay, { opacity: peekAnim }]}
+        resizeMode="cover"
+      />
 
       {showHint && (
         <Animated.View style={[styles.hint, { opacity: hintAnim }]} pointerEvents="none">

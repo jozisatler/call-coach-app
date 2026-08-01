@@ -50,31 +50,44 @@ export default function ExpandCardOverlay({
   const insets = useSafeAreaInsets();
   const progress = useRef(new Animated.Value(0)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
+  const fadeOut = useRef(new Animated.Value(1)).current;
   const target = useMemo(() => getCapturePreviewTarget(insets.top), [insets.top]);
   const finishedRef = useRef(false);
 
   useEffect(() => {
     finishedRef.current = false;
+    fadeOut.setValue(1);
+
     Animated.parallel([
       Animated.timing(backdrop, {
         toValue: 1,
-        duration: 240,
+        duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
       Animated.timing(progress, {
         toValue: 1,
-        duration: 460,
+        duration: 420,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
     ]).start(({ finished }) => {
-      if (finished && !finishedRef.current) {
-        finishedRef.current = true;
-        onFinished();
-      }
+      if (!finished || finishedRef.current) return;
+
+      // Soft handoff: fade overlay away so Capture underneath takes over without a pop.
+      Animated.timing(fadeOut, {
+        toValue: 0,
+        duration: 160,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: false,
+      }).start(({ finished: faded }) => {
+        if (faded && !finishedRef.current) {
+          finishedRef.current = true;
+          onFinished();
+        }
+      });
     });
-  }, [backdrop, onFinished, progress]);
+  }, [backdrop, fadeOut, onFinished, progress]);
 
   const left = progress.interpolate({
     inputRange: [0, 1],
@@ -98,7 +111,7 @@ export default function ExpandCardOverlay({
   });
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <Animated.View style={[styles.root, { opacity: fadeOut }]} pointerEvents="box-none">
       <Animated.View style={[styles.backdrop, { opacity: backdrop }]} />
       <Animated.View
         style={[
@@ -114,7 +127,7 @@ export default function ExpandCardOverlay({
       >
         <Image source={effect.afterImage} style={styles.image} resizeMode="cover" />
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
