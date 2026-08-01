@@ -6,6 +6,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import CaptureScreen from './src/screens/CaptureScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import CreateEffectScreen from './src/screens/CreateEffectScreen';
 import { Effect, Screen } from './src/types';
 import { colors } from './src/styles/shared';
 
@@ -30,7 +31,14 @@ export default function App() {
         <StatusBar style="light" />
 
         {screen.name === 'home' && (
-          <HomeScreen onSelectEffect={handleSelectEffect} />
+          <HomeScreen
+            onSelectEffect={handleSelectEffect}
+            onCreateEffect={() => setScreen({ name: 'create' })}
+          />
+        )}
+
+        {screen.name === 'create' && (
+          <CreateEffectScreen onBack={goHome} showToast={showToast} />
         )}
 
         {screen.name === 'capture' && (
@@ -81,6 +89,7 @@ export default function App() {
             resultMimeType={screen.resultMimeType}
             onBackHome={goHome}
             onTryAgain={() => setScreen({ name: 'capture', effect: screen.effect })}
+            showToast={showToast}
           />
         )}
 

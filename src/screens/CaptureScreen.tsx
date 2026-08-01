@@ -90,8 +90,8 @@ export default function CaptureScreen({
 
       <View style={styles.content}>
         <BeforeAfterPeek
-          beforeUri={effect.beforeImage}
-          afterUri={effect.afterImage}
+          beforeSource={effect.beforeImage}
+          afterSource={effect.afterImage}
           aspectRatio={4 / 5}
           borderRadius={18}
         />

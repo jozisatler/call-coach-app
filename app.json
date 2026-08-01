@@ -10,7 +10,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Take a photo to apply an image effect.",
-        "NSPhotoLibraryUsageDescription": "Choose a photo to apply an image effect."
+        "NSPhotoLibraryUsageDescription": "Choose a photo to apply an image effect.",
+        "NSPhotoLibraryAddUsageDescription": "Save your edited photo to your library."
       }
     },
     "android": {
@@ -22,7 +23,9 @@
       },
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -34,6 +37,14 @@
         {
           "photosPermission": "Allow access to your photos to apply effects.",
           "cameraPermission": "Allow camera access to take photos for effects."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Effectory to save edited photos to your library.",
+          "savePhotosPermission": "Allow Effectory to save edited photos to your library.",
+          "isAccessMediaLocationEnabled": false
         }
       ]
     ]

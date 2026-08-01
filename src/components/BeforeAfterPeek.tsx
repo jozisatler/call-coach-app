@@ -6,12 +6,13 @@ import {
   StyleSheet,
   Pressable,
   Animated,
+  ImageSourcePropType,
 } from 'react-native';
 import { colors } from '../styles/shared';
 
 interface BeforeAfterPeekProps {
-  beforeUri: string;
-  afterUri: string;
+  beforeSource: ImageSourcePropType;
+  afterSource: ImageSourcePropType;
   aspectRatio?: number;
   borderRadius?: number;
   hint?: string;
@@ -19,12 +20,12 @@ interface BeforeAfterPeekProps {
 }
 
 export default function BeforeAfterPeek({
-  beforeUri,
-  afterUri,
+  beforeSource,
+  afterSource,
   aspectRatio = 4 / 5,
   borderRadius = 16,
   hint = 'Hold to peek original',
-  showHint = true,
+  showHint = false,
 }: BeforeAfterPeekProps) {
   const [peeking, setPeeking] = useState(false);
   const [ready, setReady] = useState(false);
@@ -55,18 +56,14 @@ export default function BeforeAfterPeek({
     >
       {ready && (
         <>
-          <Image source={{ uri: afterUri }} style={styles.image} resizeMode="cover" />
+          <Image source={afterSource} style={styles.image} resizeMode="cover" />
           <Animated.Image
-            source={{ uri: beforeUri }}
+            source={beforeSource}
             style={[styles.image, styles.overlay, { opacity: peekAnim }]}
             resizeMode="cover"
           />
         </>
       )}
-
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{peeking ? 'Before' : 'After'}</Text>
-      </View>
 
       {showHint && (
         <Animated.View style={[styles.hint, { opacity: hintAnim }]} pointerEvents="none">
@@ -91,22 +88,6 @@ const styles = StyleSheet.create({
   },
   overlay: {
     zIndex: 1,
-  },
-  badge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    zIndex: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  badgeText: {
-    color: colors.text,
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
   },
   hint: {
     position: 'absolute',

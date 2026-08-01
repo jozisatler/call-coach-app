@@ -1,7 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, RotateCcw, Home } from 'lucide-react-native';
+import { ArrowLeft, RotateCcw, Home, Download } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 import { Effect } from '../types';
 import BeforeAfterPeek from '../components/BeforeAfterPeek';
 import { colors, sharedStyles } from '../styles/shared';
@@ -13,6 +22,13 @@ interface ResultScreenProps {
   resultMimeType: string;
   onBackHome: () => void;
   onTryAgain: () => void;
+  showToast: (msg: string) => void;
+}
+
+function extensionForMime(mimeType: string) {
+  if (mimeType.includes('png')) return 'png';
+  if (mimeType.includes('webp')) return 'webp';
+  return 'jpg';
 }
 
 export default function ResultScreen({
@@ -22,8 +38,37 @@ export default function ResultScreen({
   resultMimeType,
   onBackHome,
   onTryAgain,
+  showToast,
 }: ResultScreenProps) {
+  const [saving, setSaving] = useState(false);
   const resultUri = `data:${resultMimeType};base64,${resultBase64}`;
+
+  const handleSave = async () => {
+    if (saving) return;
+    try {
+      setSaving(true);
+
+      const permission = await MediaLibrary.requestPermissionsAsync(true);
+      if (!permission.granted) {
+        showToast('Photo library permission is required to save');
+        return;
+      }
+
+      const ext = extensionForMime(resultMimeType);
+      const fileUri = `${FileSystem.cacheDirectory}effectory-${Date.now()}.${ext}`;
+      await FileSystem.writeAsStringAsync(fileUri, resultBase64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      await MediaLibrary.saveToLibraryAsync(fileUri);
+      showToast('Saved to your photos');
+    } catch (error: any) {
+      console.log('[Effectory] save failed:', error?.message || error);
+      showToast(error?.message || 'Could not save photo');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <SafeAreaView style={sharedStyles.safeArea} edges={['top', 'bottom']}>
@@ -37,35 +82,36 @@ export default function ResultScreen({
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <BeforeAfterPeek
-          beforeUri={originalUri}
-          afterUri={resultUri}
+          beforeSource={{ uri: originalUri }}
+          afterSource={{ uri: resultUri }}
           aspectRatio={3 / 4}
           borderRadius={18}
           hint="Hold to see original"
+          showHint={false}
         />
 
         <Text style={styles.effectName}>{effect.name}</Text>
-        <Text style={styles.caption}>Hold the image to compare before and after.</Text>
-
-        <View style={styles.thumbs}>
-          <View style={styles.thumbBlock}>
-            <Image source={{ uri: originalUri }} style={styles.thumb} />
-            <Text style={styles.thumbLabel}>Original</Text>
-          </View>
-          <View style={styles.thumbBlock}>
-            <Image source={{ uri: resultUri }} style={styles.thumb} />
-            <Text style={styles.thumbLabel}>Effect</Text>
-          </View>
-        </View>
       </ScrollView>
 
       <View style={styles.actions}>
         <Pressable
-          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed, saving && styles.disabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color={colors.bg} />
+          ) : (
+            <Download size={16} color={colors.bg} />
+          )}
+          <Text style={styles.primaryText}>{saving ? 'Saving…' : 'Save photo'}</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
           onPress={onTryAgain}
         >
-          <RotateCcw size={16} color={colors.bg} />
-          <Text style={styles.primaryText}>Try another photo</Text>
+          <RotateCcw size={16} color={colors.text} />
+          <Text style={styles.secondaryText}>Try another photo</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
@@ -110,32 +156,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 18,
   },
-  caption: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 6,
-  },
-  thumbs: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-  thumbBlock: {
-    flex: 1,
-  },
-  thumb: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-  },
-  thumbLabel: {
-    color: colors.textSubtle,
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 6,
-    textAlign: 'center',
-  },
   actions: {
     paddingHorizontal: 20,
     paddingBottom: 12,
@@ -173,5 +193,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.85,
+  },
+  disabled: {
+    opacity: 0.7,
   },
 });

@@ -38,12 +38,19 @@ const STAGE_LINES: Record<string, string[]> = {
     'Fluffing the texture…',
     'Making it huggable…',
   ],
-  'figure-box': [
-    'Scanning the main subject…',
-    'Sculpting the figurine…',
-    'Pouring the acrylic base…',
-    'Printing the collector box…',
-    'Staging the desk shot…',
+  'polaroid-flash': [
+    'Framing the instant print…',
+    'Firing the disposable flash…',
+    'Warming the faded tones…',
+    'Adding soft film grain…',
+    'Sealing the Polaroid border…',
+  ],
+  'double-exposure': [
+    'Tracing the silhouette…',
+    'Layering the second exposure…',
+    'Blending sky into form…',
+    'Balancing the overlap…',
+    'Finishing the film look…',
   ],
   'voxel-subject': [
     'Locking onto the main subject…',
@@ -51,6 +58,13 @@ const STAGE_LINES: Record<string, string[]> = {
     'Stacking voxel layers…',
     'Keeping the scene untouched…',
     'Crisping the block forms…',
+  ],
+  'film-noir': [
+    'Crushing the shadows…',
+    'Bleaching the highlights…',
+    'Laying film grain…',
+    'Carving the rim light…',
+    'Locking the noir mood…',
   ],
   default: [
     'Reading your photo…',

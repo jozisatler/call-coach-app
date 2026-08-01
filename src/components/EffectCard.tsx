@@ -8,22 +8,28 @@ import { colors } from '../styles/shared';
 interface EffectCardProps {
   effect: Effect;
   onSelect: (effect: Effect) => void;
+  aspectRatio?: number;
+  compact?: boolean;
 }
 
-export default function EffectCard({ effect, onSelect }: EffectCardProps) {
+export default function EffectCard({
+  effect,
+  onSelect,
+  aspectRatio = 3 / 4,
+  compact = false,
+}: EffectCardProps) {
   return (
     <View style={styles.card}>
       <BeforeAfterPeek
-        beforeUri={effect.beforeImage}
-        afterUri={effect.afterImage}
-        aspectRatio={3 / 4}
-        borderRadius={14}
-        showHint
+        beforeSource={effect.beforeImage}
+        afterSource={effect.afterImage}
+        aspectRatio={aspectRatio}
+        borderRadius={compact ? 12 : 16}
       />
 
       <View style={styles.meta}>
         <View style={styles.metaText}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, compact && styles.nameCompact]} numberOfLines={1}>
             {effect.name}
           </Text>
           <Text style={styles.sub} numberOfLines={1}>
@@ -44,8 +50,7 @@ export default function EffectCard({ effect, onSelect }: EffectCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
-    marginBottom: 18,
+    marginBottom: 14,
   },
   meta: {
     marginTop: 10,
@@ -58,9 +63,12 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.2,
+  },
+  nameCompact: {
+    fontSize: 13,
   },
   sub: {
     color: colors.textSubtle,

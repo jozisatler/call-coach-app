@@ -5,10 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  FlatList,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Plus } from 'lucide-react-native';
 import { Effect, EffectCategory } from '../types';
 import { CATEGORIES, getEffectsByCategory } from '../data/effects';
 import EffectCard from '../components/EffectCard';
@@ -16,62 +16,128 @@ import { colors, sharedStyles } from '../styles/shared';
 
 interface HomeScreenProps {
   onSelectEffect: (effect: Effect) => void;
+  onCreateEffect: () => void;
 }
 
-export default function HomeScreen({ onSelectEffect }: HomeScreenProps) {
+/** Cycle of shapes so the feed never feels like a uniform brick wall. */
+const ASPECT_CYCLE = [3 / 4, 1, 4 / 5, 2 / 3, 5 / 6] as const;
+
+type MasonryItem = {
+  effect: Effect;
+  aspectRatio: number;
+  estimatedHeight: number;
+};
+
+function buildMasonryColumns(
+  effects: Effect[],
+  columnWidth: number
+): { left: MasonryItem[]; right: MasonryItem[] } {
+  const left: MasonryItem[] = [];
+  const right: MasonryItem[] = [];
+  let leftH = 0;
+  let rightH = 0;
+
+  effects.forEach((effect, index) => {
+    const aspectRatio = ASPECT_CYCLE[index % ASPECT_CYCLE.length];
+    const estimatedHeight = columnWidth / aspectRatio + 56;
+    const item: MasonryItem = { effect, aspectRatio, estimatedHeight };
+
+    if (leftH <= rightH) {
+      left.push(item);
+      leftH += estimatedHeight + 14;
+    } else {
+      right.push(item);
+      rightH += estimatedHeight + 14;
+    }
+  });
+
+  return { left, right };
+}
+
+export default function HomeScreen({ onSelectEffect, onCreateEffect }: HomeScreenProps) {
   const [category, setCategory] = useState<EffectCategory | 'all'>('all');
   const { width } = useWindowDimensions();
   const gap = 12;
   const horizontalPad = 20;
-  const cardWidth = (width - horizontalPad * 2 - gap) / 2;
+  const columnWidth = (width - horizontalPad * 2 - gap) / 2;
 
   const effects = useMemo(() => getEffectsByCategory(category), [category]);
+  const columns = useMemo(
+    () => buildMasonryColumns(effects, columnWidth),
+    [effects, columnWidth]
+  );
 
   return (
     <SafeAreaView style={sharedStyles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.brand}>Effectory</Text>
-        <Text style={styles.subtitle}>Image effects from the community</Text>
+        <View style={styles.brandRow}>
+          <Text style={styles.brand}>Effectory</Text>
+          <Pressable
+            style={({ pressed }) => [styles.createBtn, pressed && styles.createBtnPressed]}
+            onPress={onCreateEffect}
+          >
+            <Plus size={14} color={colors.bg} strokeWidth={2.5} />
+            <Text style={styles.createBtnText}>Create Effect</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.tabsWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabs}
+        >
+          {CATEGORIES.map((item) => {
+            const active = category === item.id;
+            return (
+              <Pressable
+                key={item.id}
+                onPress={() => setCategory(item.id)}
+                style={[styles.tab, active && styles.tabActive]}
+              >
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabs}
-        style={styles.tabsScroll}
-      >
-        {CATEGORIES.map((item) => {
-          const active = category === item.id;
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => setCategory(item.id)}
-              style={[styles.tab, active && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <FlatList
-        data={effects}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ gap }}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <View style={{ width: cardWidth }}>
-            <EffectCard effect={item} onSelect={onSelectEffect} />
+      >
+        <View style={[styles.masonry, { gap }]}>
+          <View style={{ width: columnWidth }}>
+            {columns.left.map((item) => (
+              <EffectCard
+                key={item.effect.id}
+                effect={item.effect}
+                onSelect={onSelectEffect}
+                aspectRatio={item.aspectRatio}
+                compact
+              />
+            ))}
           </View>
-        )}
-        ListEmptyComponent={
+          <View style={{ width: columnWidth }}>
+            {columns.right.map((item) => (
+              <EffectCard
+                key={item.effect.id}
+                effect={item.effect}
+                onSelect={onSelectEffect}
+                aspectRatio={item.aspectRatio}
+                compact
+              />
+            ))}
+          </View>
+        </View>
+
+        {effects.length === 0 && (
           <Text style={styles.empty}>No effects in this category yet.</Text>
-        }
-      />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -82,32 +148,52 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   brand: {
     color: colors.text,
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -1,
+    flexShrink: 1,
   },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-    marginTop: 4,
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 12,
+    height: 34,
+    borderRadius: 10,
   },
-  tabsScroll: {
-    flexGrow: 0,
-    marginTop: 18,
-    marginBottom: 8,
+  createBtnPressed: {
+    opacity: 0.85,
+  },
+  createBtnText: {
+    color: colors.bg,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tabsWrap: {
+    marginTop: 16,
+    marginBottom: 4,
+    height: 48,
+    justifyContent: 'center',
   },
   tabs: {
     paddingHorizontal: 20,
     gap: 8,
     alignItems: 'center',
-    paddingVertical: 2,
+    height: 48,
   },
   tab: {
     paddingHorizontal: 16,
-    height: 36,
-    borderRadius: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -122,9 +208,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     fontWeight: '600',
-    lineHeight: 16,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+    lineHeight: 18,
   },
   tabTextActive: {
     color: colors.bg,
@@ -133,6 +217,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 40,
+  },
+  masonry: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   empty: {
     color: colors.textSubtle,
