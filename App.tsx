@@ -1,64 +1,89 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
+import CaptureScreen from './src/screens/CaptureScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
-import PracticeScreen from './src/screens/PracticeScreen';
+import ResultScreen from './src/screens/ResultScreen';
+import { Effect, Screen } from './src/types';
 import { colors } from './src/styles/shared';
 
-type Screen = 'home' | 'processing' | 'practice';
-
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
-  const [base64Audio, setBase64Audio] = useState<string | null>(null);
+  const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [toastMessage, setToastMessage] = useState('');
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 2000);
-  };
+    setTimeout(() => setToastMessage(''), 2400);
+  }, []);
 
-  const handleAudioReady = (base64: string) => {
-    setBase64Audio(base64);
-    setCurrentScreen('processing');
-  };
+  const goHome = () => setScreen({ name: 'home' });
 
-  const handleGoBack = () => {
-    setBase64Audio(null);
-    setCurrentScreen('home');
+  const handleSelectEffect = (effect: Effect) => {
+    setScreen({ name: 'capture', effect });
   };
 
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
         <StatusBar style="light" />
-        
-        {/* Background radial gradient simulation (shared) */}
-        <View style={styles.radialBackground} />
 
-        {currentScreen === 'home' && (
-          <HomeScreen onAudioReady={handleAudioReady} showToast={showToast} />
+        {screen.name === 'home' && (
+          <HomeScreen onSelectEffect={handleSelectEffect} />
         )}
 
-        {currentScreen === 'processing' && base64Audio && (
-          <ProcessingScreen 
-            base64Audio={base64Audio} 
-            onGoBack={handleGoBack} 
-            onPractice={() => setCurrentScreen('practice')}
+        {screen.name === 'capture' && (
+          <CaptureScreen
+            effect={screen.effect}
+            onBack={goHome}
+            showToast={showToast}
+            onImageReady={({ uri, base64, mimeType }) =>
+              setScreen({
+                name: 'processing',
+                effect: screen.effect,
+                imageUri: uri,
+                imageBase64: base64,
+                mimeType,
+              })
+            }
           />
         )}
 
-        {currentScreen === 'practice' && (
-          <PracticeScreen 
-            onGoBack={() => {
-              setBase64Audio(null);
-              setCurrentScreen('home');
-            }} 
+        {screen.name === 'processing' && (
+          <ProcessingScreen
+            effect={screen.effect}
+            imageUri={screen.imageUri}
+            imageBase64={screen.imageBase64}
+            mimeType={screen.mimeType}
+            onCancel={() => setScreen({ name: 'capture', effect: screen.effect })}
+            onError={(message) => {
+              showToast(message);
+              setScreen({ name: 'capture', effect: screen.effect });
+            }}
+            onComplete={(result) =>
+              setScreen({
+                name: 'result',
+                effect: screen.effect,
+                originalUri: screen.imageUri,
+                resultBase64: result.base64,
+                resultMimeType: result.mimeType,
+              })
+            }
           />
         )}
 
-        {/* Global Toast */}
+        {screen.name === 'result' && (
+          <ResultScreen
+            effect={screen.effect}
+            originalUri={screen.originalUri}
+            resultBase64={screen.resultBase64}
+            resultMimeType={screen.resultMimeType}
+            onBackHome={goHome}
+            onTryAgain={() => setScreen({ name: 'capture', effect: screen.effect })}
+          />
+        )}
+
         {toastMessage !== '' && (
           <View style={styles.toast}>
             <Text style={styles.toastText}>{toastMessage}</Text>
@@ -74,17 +99,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  radialBackground: {
-    position: 'absolute',
-    top: '20%',
-    left: '50%',
-    width: 600,
-    height: 600,
-    marginLeft: -300,
-    marginTop: -300,
-    borderRadius: 300,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
   toast: {
     position: 'absolute',
     bottom: 40,
@@ -96,16 +110,12 @@ const styles = StyleSheet.create({
     borderColor: '#404040',
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
     zIndex: 999,
   },
   toastText: {
     color: '#f5f5f5',
     fontSize: 14,
     fontWeight: '500',
+    textAlign: 'center',
   },
 });

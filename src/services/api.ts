@@ -1,189 +1,106 @@
-export const analyzeTranscript = async (
-  finalTranscript: string,
-  onProgress: (status: string) => void
-): Promise<{ overallScore: number; feedback: { title: string, content: string }[] }> => {
-  if (!finalTranscript.trim()) return { overallScore: 0, feedback: [] };
-  
-  onProgress('Analyzing call transcript...');
-  
+const MODEL = 'gemini-3.1-flash-image';
+
+export async function applyEffectToImage(
+  imageBase64: string,
+  mimeType: string,
+  effectName: string,
+  effectPrompt: string,
+  onProgress?: (status: string) => void
+): Promise<{ base64: string; mimeType: string }> {
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_AI_STUDIO;
+  if (!apiKey) {
+    throw new Error('Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env');
+  }
+
+  onProgress?.('Preparing your photo...');
+
+  const prompt = `${effectPrompt}
+
+Rules:
+- Apply the effect to the MAIN SUBJECT of the photo only (person, pet, object, food, vehicle, or any focal item — not necessarily a human).
+- Do NOT invent, add, or generate any people/humans/characters that are not already clearly present in the original photo.
+- If the main subject is an object or animal, keep it as that — never replace it with a person or add a person next to it.
+- Preserve recognizability of the original subject.
+- Do not add text overlays or watermarks.
+- Return only the edited image.`;
+
+  console.log('[Effectory] Applying effect:', effectName);
+  console.log('[Effectory] Effect prompt:\n', effectPrompt);
+  console.log('[Effectory] Full prompt sent to Gemini:\n', prompt);
+  console.log('[Effectory] Image mimeType:', mimeType, '| base64 length:', imageBase64.length);
+
+  onProgress?.('Applying effect...');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
+
   try {
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_AI_STUDIO;
-    if (!apiKey) {
-      throw new Error("Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env");
-    }
-
-    const prompt = `Please provide constructive feedback on how this call went based on the following transcript:\n\n"${finalTranscript}"\n\nReturn the response as a valid JSON object with exactly two keys:\n1. "overallScore": a number between 0 and 100 rating the call's success.\n2. "feedback": a JSON array of exactly 4 objects with the following "title"s in this exact order: "Strengths", "Areas for Improvements", "Communication Style", "First Biggest Mistake". The "content" field of each object should contain detailed, constructive feedback for that category in markdown.\n\nDo not include json backticks.`;
-
-    console.log('Sending text to Gemini for analysis... prompt length:', prompt.length);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      }),
-      signal: controller.signal
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: imageBase64,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+          },
+        }),
+        signal: controller.signal,
+      }
+    );
 
     clearTimeout(timeoutId);
 
-    console.log('Gemini Analysis response status:', response.status);
-
     const data = await response.json();
-    console.log('Gemini Analysis data received. Success?', !!data.candidates);
 
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      const rawText = data.candidates[0].content.parts[0].text;
-      const cleanText = rawText.replace(/```(?:json)?/g, "").trim();
-      return JSON.parse(cleanText);
-    } else {
-      console.error("Gemini API Error:", data);
-      throw new Error("Could not generate feedback.");
+    if (!response.ok) {
+      console.log('[Effectory] Gemini error response:', JSON.stringify(data, null, 2));
+      const message = data?.error?.message || `Gemini request failed (${response.status})`;
+      throw new Error(message);
     }
+
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) {
+      console.log('[Effectory] Unexpected Gemini payload:', JSON.stringify(data, null, 2));
+      throw new Error('No image returned from Gemini.');
+    }
+
+    const imagePart = parts.find(
+      (part: { inlineData?: { data?: string; mimeType?: string } }) => part.inlineData?.data
+    );
+
+    if (!imagePart?.inlineData?.data) {
+      console.log('[Effectory] No inline image in parts:', JSON.stringify(parts.map((p: any) => ({ hasText: !!p.text, hasInline: !!p.inlineData })), null, 2));
+      throw new Error('Gemini did not return an edited image. Try another photo.');
+    }
+
+    onProgress?.('Finishing up...');
+    console.log('[Effectory] Effect applied successfully:', effectName);
+
+    return {
+      base64: imagePart.inlineData.data,
+      mimeType: imagePart.inlineData.mimeType || 'image/png',
+    };
   } catch (error: any) {
-    console.error("Failed to analyze transcript:", error);
-    throw new Error(error.message || "Error connecting to Gemini API.");
-  }
-};
-
-export const transcribeAudioBase64 = async (
-  base64Audio: string,
-  onProgress: (status: string) => void
-): Promise<string> => {
-  onProgress('Extracting voice data...');
-  
-  try {
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_AI_STUDIO;
-    if (!apiKey) {
-      throw new Error('Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env');
+    console.log('[Effectory] applyEffectToImage failed:', error?.message || error);
+    if (error?.name === 'AbortError') {
+      throw new Error('Effect timed out. Please try again.');
     }
-    
-    console.log('Sending audio to Gemini for transcription...');
-    
-    const prompt = "Please transcribe this audio exactly as it is. Do not add any extra commentary, just the pure raw transcript of what is spoken.";
-    
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: "audio/m4a",
-                data: base64Audio
-              }
-            }
-          ]
-        }]
-      })
-    });
-    
-    console.log('Gemini Transcription response status:', response.status);
-    
-    const data = await response.json();
-    
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      return data.candidates[0].content.parts[0].text;
-    } else {
-      console.error("Gemini Transcription Error:", data);
-      throw new Error("Could not transcribe audio via Gemini.");
-    }
-  } catch (e: any) {
-    console.error(e);
-    throw new Error(`Error calling Gemini transcription: ${e.message}`);
-  }
-};
-
-export const evaluateObjectionResponse = async (
-  base64Audio: string,
-  objection: string,
-  hint: string
-): Promise<{ pass: boolean; feedback: string }> => {
-  try {
-    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_AI_STUDIO;
-    if (!apiKey) {
-      throw new Error('Missing EXPO_PUBLIC_GOOGLE_AI_STUDIO API key in .env');
-    }
-    
-    const prompt = `You are a sales coach grading an objection-handling rep. The user sells
-high-ticket B2B services to small-business owners and is training to respond
-to resistance with calm, curious QUESTIONS — never pressure or justification.
-
-The customer's objection was: "${objection}"
-The recommended strategy was: "${hint}"
-
-Listen to the user's recorded audio response and grade it against these rules.
-
-PASS requires BOTH:
-1. Substance — the response leads with a genuine question about the
-   customer's evidence, math, criteria, or decision process (e.g. "when you
-   compared, what did you measure it against?"), OR cleanly isolates the
-   objection ("setting price aside — does this solve the problem?"). Calm
-   agreement followed by a redirect question also passes ("Fair. Quick
-   question though—").
-2. Delivery — tone is calm, curious, unhurried. Like a doctor discussing a
-   diagnosis, not a vendor chasing a deal.
-
-INSTANT FAIL if the response contains ANY of:
-- Justifying or defending the price/product instead of asking a question
-- A verdict about the customer ("you don't understand", "you're wrong",
-  "trust me") or any pressure/ultimatum
-- Offering a discount or cheaper option unprompted
-- Apologizing for the ask, or offering the exit ("no worries if not")
-- Feature-dumping or a monologue with no question in it
-- Needy delivery: rushed, over-explaining, trailing off
-
-FEEDBACK rules: max 2 sentences. Quote or paraphrase the user's exact words
-at the moment that decided the grade. On fail, give the one line they should
-have said instead. On pass, name the specific move that earned it so they
-can repeat it. Judge delivery (pace, filler, tone) as well as wording.
-
-Return a JSON object with exactly two keys:
-1. "pass": a boolean indicating if the user successfully handled the objection.
-2. "feedback": a short string of constructive feedback on their specific
-   delivery and wording.
-Do not include json backticks.`;
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: "audio/m4a",
-                data: base64Audio
-              }
-            }
-          ]
-        }]
-      }),
-      signal: controller.signal
-    });
-
+    throw new Error(error?.message || 'Failed to apply effect.');
+  } finally {
     clearTimeout(timeoutId);
-    
-    const data = await response.json();
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      const rawText = data.candidates[0].content.parts[0].text;
-      const cleanText = rawText.replace(/```(?:json)?/g, "").trim();
-      return JSON.parse(cleanText);
-    } else {
-      console.error("Gemini Evaluation Error:", data);
-      throw new Error("Could not evaluate response.");
-    }
-  } catch (e: any) {
-    console.error(e);
-    throw new Error(`Error calling Gemini evaluation: ${e.message}`);
   }
-};
+}
