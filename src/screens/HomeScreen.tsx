@@ -13,8 +13,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus } from 'lucide-react-native';
 import { Effect, EffectCategory } from '../types';
-import { CATEGORIES, getEffectsByCategory } from '../data/effects';
+import { CATEGORIES, getEffectById, getEffectsByCategory, SURPRISE_EFFECT_ID } from '../data/effects';
 import EffectCard from '../components/EffectCard';
+import SurpriseMeCard from '../components/SurpriseMeCard';
 import { CardOrigin } from '../components/ExpandCardOverlay';
 import { HomeIcon, CameraIcon, UserIcon } from '../components/TabIcons';
 import { colors, sharedStyles } from '../styles/shared';
@@ -128,6 +129,7 @@ export default function HomeScreen({
   const columnWidth = (width - horizontalPad * 2 - gap) / 2;
 
   const effects = useMemo(() => getEffectsByCategory(category), [category]);
+  const surpriseEffect = useMemo(() => getEffectById(SURPRISE_EFFECT_ID), []);
   const columns = useMemo(
     () => buildMasonryColumns(effects, columnWidth),
     [effects, columnWidth]
@@ -194,6 +196,10 @@ export default function HomeScreen({
               ))}
             </View>
           </View>
+
+          {surpriseEffect && (
+            <SurpriseMeCard effect={surpriseEffect} onSelect={onSelectEffect} />
+          )}
 
           {effects.length === 0 && (
             <Text style={styles.empty}>No effects in this category yet.</Text>

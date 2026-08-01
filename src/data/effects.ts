@@ -15,7 +15,7 @@ export const CATEGORIES: { id: EffectCategory | 'all'; label: string }[] = [
 export const EFFECTS: Effect[] = [
   {
     id: 'aura-glow',
-    name: 'Aura Glow',
+    name: 'Glow',
     description: 'Neon rim light and soft bloom around whatever is front and center.',
     prompt:
       'Identify the main subject of this photo (it may be a person, pet, object, food, vehicle, or any focal item). Add a soft ethereal neon aura around that main subject only: warm-to-cool rim light, gentle bloom, faint light particles near its edges. Keep the subject photorealistic and fully recognizable. Do not restyle or redraw the background or secondary elements — leave the rest of the image exactly the same. No text, no watermark.',
@@ -63,7 +63,7 @@ export const EFFECTS: Effect[] = [
   },
   {
     id: 'voxel-subject',
-    name: 'Voxel Pop',
+    name: 'Blocky',
     description: 'Blocky 3D main subject — scene stays real.',
     prompt:
       'Find the single MAIN SUBJECT already visible in this photo (object, food, vehicle, pet, furniture, or person — whatever is clearly the focal item). Convert ONLY that existing subject into a blocky voxel / low-poly 3D version of itself: cubic forms, soft toy-like lighting, same placement and approximate scale, same recognizable shape and colors. CRITICAL: Do NOT add any humans, people, faces, hands, characters, or figures that are not already in the original photo. Do NOT replace an object with a person. Do NOT put a voxel character holding or standing with the subject. If there is no person in the original, the result must also contain no person. Do not voxelize or restyle the background — leave everything else exactly the same. No text, no watermark.',
@@ -91,6 +91,13 @@ export function getEffectsByCategory(category: EffectCategory | 'all'): Effect[]
   if (category === 'all') return EFFECTS;
   return EFFECTS.filter((effect) => effect.categories.includes(category));
 }
+
+export function getEffectById(id: string): Effect | undefined {
+  return EFFECTS.find((effect) => effect.id === id);
+}
+
+/** Demo hero effect — Surprise Me always lands here. */
+export const SURPRISE_EFFECT_ID = 'voxel-subject';
 
 export function formatUses(uses: number): string {
   if (uses >= 1000) return `${(uses / 1000).toFixed(uses >= 10000 ? 0 : 1)}k`;

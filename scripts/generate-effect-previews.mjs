@@ -26,7 +26,7 @@ const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const PREVIEWS = [
   {
     id: 'aura-glow',
-    name: 'Aura Glow',
+    name: 'Glow',
     beforePrompt: `Photorealistic vertical 3:4 night portrait selfie of a young adult outdoors under streetlights, city bokeh behind them, casual jacket, natural phone-camera look, slightly dim ambient light. Real photo, no glow, no filters, no text, no watermark.`,
     afterPrompt: `Identify the main subject of this photo (it may be a person, pet, object, food, vehicle, or any focal item). Add a soft ethereal neon aura around that main subject only: warm-to-cool rim light, gentle bloom, faint light particles near its edges. Keep the subject photorealistic and fully recognizable. Do not restyle or redraw the background or secondary elements — leave the rest of the image exactly the same. No text, no watermark.`,
   },
@@ -50,7 +50,7 @@ const PREVIEWS = [
   },
   {
     id: 'voxel-subject',
-    name: 'Voxel Pop',
+    name: 'Blocky',
     beforePrompt: `Photorealistic vertical 3:4 photo of a bright yellow rubber duck sitting alone on a clean bathroom sink edge, tiled wall behind it, soft daylight from a window, phone snapshot. The rubber duck is clearly the only main subject. No people, no hands, no faces. Real photo, no 3D style, no text, no watermark.`,
     afterPrompt: `Find the single MAIN SUBJECT already visible in this photo (object, food, vehicle, pet, furniture, or person — whatever is clearly the focal item). Convert ONLY that existing subject into a blocky voxel / low-poly 3D version of itself: cubic forms, soft toy-like lighting, same placement and approximate scale, same recognizable shape and colors. CRITICAL: Do NOT add any humans, people, faces, hands, characters, or figures that are not already in the original photo. Do NOT replace an object with a person. Do NOT put a voxel character holding or standing with the subject. If there is no person in the original, the result must also contain no person. Do not voxelize or restyle the background — leave everything else exactly the same. No text, no watermark.`,
   },
