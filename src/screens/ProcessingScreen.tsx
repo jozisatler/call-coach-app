@@ -7,11 +7,13 @@ import {
   Animated,
   Easing,
   Image,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { applyEffectToImage } from '../services/api';
 import { Effect } from '../types';
-import { colors, sharedStyles } from '../styles/shared';
+import { colors } from '../styles/shared';
 
 interface ProcessingScreenProps {
   effect: Effect;
@@ -75,68 +77,87 @@ const STAGE_LINES: Record<string, string[]> = {
   ],
 };
 
-function Ring({
-  size,
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+function MorphLayer({
+  uri,
   delay,
-  color,
+  size,
 }: {
-  size: number;
+  uri: string;
   delay: number;
-  color: string;
+  size: number;
 }) {
-  const scale = useRef(new Animated.Value(0.55)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const anim = Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
-        Animated.parallel([
-          Animated.timing(scale, {
-            toValue: 1.15,
-            duration: 1600,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.sequence([
-            Animated.timing(opacity, {
-              toValue: 0.55,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 1200,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-        Animated.timing(scale, {
-          toValue: 0.55,
-          duration: 0,
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(progress, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     );
-    anim.start();
-    return () => anim.stop();
-  }, [delay, opacity, scale]);
+    loop.start();
+    return () => loop.stop();
+  }, [delay, progress]);
+
+  const scaleX = progress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.12, 0.94],
+  });
+  const scaleY = progress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0.9, 1.1],
+  });
+  const rotate = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-4deg', '5deg'],
+  });
+  const opacity = progress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.35, 0.7, 0.25],
+  });
+  const translateX = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-8, 10],
+  });
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [6, -8],
+  });
 
   return (
     <Animated.View
       pointerEvents="none"
       style={[
-        styles.ring,
+        styles.morphLayer,
         {
           width: size,
           height: size,
-          borderRadius: size / 2,
-          borderColor: color,
           opacity,
-          transform: [{ scale }],
+          transform: [
+            { translateX },
+            { translateY },
+            { scaleX },
+            { scaleY },
+            { rotate },
+          ],
         },
       ]}
-    />
+    >
+      <Image source={{ uri }} style={styles.morphImage} blurRadius={1.5} />
+    </Animated.View>
   );
 }
 
@@ -155,58 +176,55 @@ export default function ProcessingScreen({
   const cancelled = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const onErrorRef = useRef(onError);
-  const spin = useRef(new Animated.Value(0)).current;
-  const previewPulse = useRef(new Animated.Value(0.92)).current;
+  const corePulse = useRef(new Animated.Value(0)).current;
+  const ripple = useRef(new Animated.Value(0)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
 
   onCompleteRef.current = onComplete;
   onErrorRef.current = onError;
 
-  const spinStyle = useMemo(
-    () => ({
-      transform: [
-        {
-          rotate: spin.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['0deg', '360deg'],
-          }),
-        },
-      ],
-    }),
-    [spin]
-  );
-
   useEffect(() => {
-    const spinLoop = Animated.loop(
-      Animated.timing(spin, {
-        toValue: 1,
-        duration: 2400,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
     const pulseLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(previewPulse, {
+        Animated.timing(corePulse, {
           toValue: 1,
-          duration: 900,
+          duration: 1100,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-        Animated.timing(previewPulse, {
-          toValue: 0.92,
-          duration: 900,
+        Animated.timing(corePulse, {
+          toValue: 0,
+          duration: 1100,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     );
-    spinLoop.start();
+    const rippleLoop = Animated.loop(
+      Animated.timing(ripple, {
+        toValue: 1,
+        duration: 2400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      })
+    );
+    const shimmerLoop = Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 1800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
     pulseLoop.start();
+    rippleLoop.start();
+    shimmerLoop.start();
     return () => {
-      spinLoop.stop();
       pulseLoop.stop();
+      rippleLoop.stop();
+      shimmerLoop.stop();
     };
-  }, [previewPulse, spin]);
+  }, [corePulse, ripple, shimmer]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -216,7 +234,6 @@ export default function ProcessingScreen({
   }, [lines.length]);
 
   useEffect(() => {
-    // Satisfying fake progress that eases toward ~90% while waiting
     const id = setInterval(() => {
       setProgress((p) => {
         if (p >= 0.9) return p;
@@ -255,98 +272,167 @@ export default function ProcessingScreen({
 
   const pct = Math.round(progress * 100);
 
+  const coreScale = corePulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1.05],
+  });
+  const coreRotate = corePulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-2deg', '2deg'],
+  });
+  const rippleScale = ripple.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.7, 1.45],
+  });
+  const rippleOpacity = ripple.interpolate({
+    inputRange: [0, 0.2, 1],
+    outputRange: [0.45, 0.25, 0],
+  });
+  const shimmerX = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-160, 160],
+  });
+
+  const morphDelays = useMemo(() => [0, 350, 700], []);
+
   return (
-    <SafeAreaView style={[sharedStyles.safeArea, styles.screen]} edges={['top', 'bottom']}>
-      <View style={styles.stage}>
-        <Ring size={220} delay={0} color="rgba(232,228,220,0.35)" />
-        <Ring size={280} delay={450} color="rgba(232,228,220,0.22)" />
-        <Ring size={340} delay={900} color="rgba(232,228,220,0.12)" />
+    <View style={styles.root}>
+      <Image source={{ uri: imageUri }} style={styles.bgImage} resizeMode="cover" />
+      <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={styles.scrim} />
 
-        <Animated.View style={[styles.orbit, spinStyle]}>
-          <View style={styles.orbitDot} />
-        </Animated.View>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.stage}>
+          <Animated.View
+            style={[
+              styles.ripple,
+              {
+                opacity: rippleOpacity,
+                transform: [{ scale: rippleScale }],
+              },
+            ]}
+          />
 
-        <Animated.View style={[styles.previewWrap, { transform: [{ scale: previewPulse }] }]}>
-          <Image source={{ uri: imageUri }} style={styles.preview} />
-          <View style={styles.previewVignette} />
-        </Animated.View>
-      </View>
+          {morphDelays.map((delay) => (
+            <MorphLayer key={delay} uri={imageUri} delay={delay} size={210} />
+          ))}
 
-      <Text style={styles.kicker}>Brewing effect</Text>
-      <Text style={styles.title}>{effect.name}</Text>
-      <Text style={styles.status}>{lines[lineIndex]}</Text>
+          <Animated.View
+            style={[
+              styles.coreWrap,
+              {
+                transform: [{ scale: coreScale }, { rotate: coreRotate }],
+              },
+            ]}
+          >
+            <Image source={{ uri: imageUri }} style={styles.coreImage} />
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.shimmer,
+                {
+                  transform: [{ translateX: shimmerX }, { rotate: '18deg' }],
+                },
+              ]}
+            />
+            <View style={styles.coreVignette} />
+          </Animated.View>
+        </View>
 
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${Math.max(pct, 4)}%` }]} />
-      </View>
-      <Text style={styles.pct}>{pct}%</Text>
+        <Text style={styles.kicker}>Morphing</Text>
+        <Text style={styles.title}>{effect.name}</Text>
+        <Text style={styles.status}>{lines[lineIndex]}</Text>
 
-      <Pressable
-        onPress={() => {
-          cancelled.current = true;
-          onCancel();
-        }}
-        style={styles.cancel}
-        hitSlop={10}
-      >
-        <Text style={styles.cancelText}>Cancel</Text>
-      </Pressable>
-    </SafeAreaView>
+        <View style={styles.barTrack}>
+          <View style={[styles.barFill, { width: `${Math.max(pct, 4)}%` }]} />
+        </View>
+        <Text style={styles.pct}>{pct}%</Text>
+
+        <Pressable
+          onPress={() => {
+            cancelled.current = true;
+            onCancel();
+          }}
+          style={styles.cancel}
+          hitSlop={10}
+        >
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  root: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  bgImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: SCREEN_W,
+    height: SCREEN_H,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8,8,8,0.42)',
+  },
+  safe: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
   stage: {
-    width: 280,
-    height: 280,
+    width: 260,
+    height: 260,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
   },
-  ring: {
-    position: 'absolute',
-    borderWidth: 1.5,
-  },
-  orbit: {
+  ripple: {
     position: 'absolute',
     width: 200,
     height: 200,
-    borderRadius: 100,
+    borderRadius: 48,
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,228,220,0.45)',
   },
-  orbitDot: {
+  morphLayer: {
     position: 'absolute',
-    top: -4,
-    left: '50%',
-    marginLeft: -4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.accent,
-  },
-  previewWrap: {
-    width: 132,
-    height: 132,
-    borderRadius: 28,
+    borderRadius: 42,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(232,228,220,0.35)',
-    backgroundColor: colors.surface,
   },
-  preview: {
+  morphImage: {
     width: '100%',
     height: '100%',
   },
-  previewVignette: {
+  coreWrap: {
+    width: 168,
+    height: 168,
+    borderRadius: 36,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,228,220,0.4)',
+    backgroundColor: colors.surface,
+  },
+  coreImage: {
+    width: '100%',
+    height: '100%',
+  },
+  shimmer: {
+    position: 'absolute',
+    top: -40,
+    bottom: -40,
+    width: 54,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  coreVignette: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   kicker: {
-    color: colors.textSubtle,
+    color: 'rgba(245,245,245,0.7)',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -361,7 +447,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
   },
   status: {
-    color: colors.textMuted,
+    color: 'rgba(245,245,245,0.78)',
     fontSize: 15,
     marginTop: 10,
     textAlign: 'center',
@@ -372,7 +458,7 @@ const styles = StyleSheet.create({
     maxWidth: 280,
     height: 6,
     borderRadius: 999,
-    backgroundColor: colors.surfacePressed,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     marginTop: 28,
     overflow: 'hidden',
   },
@@ -382,7 +468,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   pct: {
-    color: colors.textSubtle,
+    color: 'rgba(245,245,245,0.55)',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 10,
@@ -394,7 +480,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   cancelText: {
-    color: colors.textSubtle,
+    color: 'rgba(245,245,245,0.55)',
     fontSize: 14,
     fontWeight: '600',
   },

@@ -12,10 +12,11 @@ import { Plus } from 'lucide-react-native';
 import { Effect, EffectCategory } from '../types';
 import { CATEGORIES, getEffectsByCategory } from '../data/effects';
 import EffectCard from '../components/EffectCard';
+import { CardOrigin } from '../components/ExpandCardOverlay';
 import { colors, sharedStyles } from '../styles/shared';
 
 interface HomeScreenProps {
-  onSelectEffect: (effect: Effect) => void;
+  onSelectEffect: (effect: Effect, origin: CardOrigin) => void;
   onCreateEffect: () => void;
 }
 

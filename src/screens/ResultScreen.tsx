@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, RotateCcw, Home, Download } from 'lucide-react-native';
+import { ArrowLeft, RotateCcw, Home, Download, Share2 } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import { Effect } from '../types';
 import BeforeAfterPeek from '../components/BeforeAfterPeek';
 import { colors, sharedStyles } from '../styles/shared';
@@ -31,8 +32,16 @@ function extensionForMime(mimeType: string) {
   return 'jpg';
 }
 
+async function writeResultFile(resultBase64: string, resultMimeType: string) {
+  const ext = extensionForMime(resultMimeType);
+  const fileUri = `${FileSystem.cacheDirectory}effectory-${Date.now()}.${ext}`;
+  await FileSystem.writeAsStringAsync(fileUri, resultBase64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  return { fileUri, ext, mimeType: resultMimeType || `image/${ext === 'jpg' ? 'jpeg' : ext}` };
+}
+
 export default function ResultScreen({
-  effect,
   originalUri,
   resultBase64,
   resultMimeType,
@@ -41,6 +50,7 @@ export default function ResultScreen({
   showToast,
 }: ResultScreenProps) {
   const [saving, setSaving] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const resultUri = `data:${resultMimeType};base64,${resultBase64}`;
 
   const handleSave = async () => {
@@ -54,12 +64,7 @@ export default function ResultScreen({
         return;
       }
 
-      const ext = extensionForMime(resultMimeType);
-      const fileUri = `${FileSystem.cacheDirectory}effectory-${Date.now()}.${ext}`;
-      await FileSystem.writeAsStringAsync(fileUri, resultBase64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
+      const { fileUri } = await writeResultFile(resultBase64, resultMimeType);
       await MediaLibrary.saveToLibraryAsync(fileUri);
       showToast('Saved to your photos');
     } catch (error: any) {
@@ -67,6 +72,31 @@ export default function ResultScreen({
       showToast(error?.message || 'Could not save photo');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleIgStory = async () => {
+    if (sharing) return;
+    try {
+      setSharing(true);
+
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        showToast('Sharing is not available on this device');
+        return;
+      }
+
+      const { fileUri, mimeType } = await writeResultFile(resultBase64, resultMimeType);
+      await Sharing.shareAsync(fileUri, {
+        mimeType,
+        dialogTitle: 'Post on IG Story',
+        UTI: 'public.image',
+      });
+    } catch (error: any) {
+      console.log('[Effectory] IG share failed:', error?.message || error);
+      showToast(error?.message || 'Could not open share sheet');
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -86,26 +116,37 @@ export default function ResultScreen({
           afterSource={{ uri: resultUri }}
           aspectRatio={3 / 4}
           borderRadius={18}
-          hint="Hold to see original"
           showHint={false}
         />
-
-        <Text style={styles.effectName}>{effect.name}</Text>
       </ScrollView>
 
       <View style={styles.actions}>
         <Pressable
-          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed, saving && styles.disabled]}
+          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed, sharing && styles.disabled]}
+          onPress={handleIgStory}
+          disabled={sharing}
+        >
+          {sharing ? (
+            <ActivityIndicator color={colors.bg} />
+          ) : (
+            <Share2 size={16} color={colors.bg} />
+          )}
+          <Text style={styles.primaryText}>{sharing ? 'Opening…' : 'Post on IG Story'}</Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed, saving && styles.disabled]}
           onPress={handleSave}
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator color={colors.bg} />
+            <ActivityIndicator color={colors.text} />
           ) : (
-            <Download size={16} color={colors.bg} />
+            <Download size={16} color={colors.text} />
           )}
-          <Text style={styles.primaryText}>{saving ? 'Saving…' : 'Save photo'}</Text>
+          <Text style={styles.secondaryText}>{saving ? 'Saving…' : 'Save photo'}</Text>
         </Pressable>
+
         <Pressable
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
           onPress={onTryAgain}
@@ -113,6 +154,7 @@ export default function ResultScreen({
           <RotateCcw size={16} color={colors.text} />
           <Text style={styles.secondaryText}>Try another photo</Text>
         </Pressable>
+
         <Pressable
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
           onPress={onBackHome}
@@ -148,13 +190,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-  },
-  effectName: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginTop: 18,
   },
   actions: {
     paddingHorizontal: 20,

@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Animated,
+  Easing,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, Image as ImageIcon } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,6 +20,8 @@ interface CaptureScreenProps {
   onBack: () => void;
   onImageReady: (payload: { uri: string; base64: string; mimeType: string }) => void;
   showToast: (msg: string) => void;
+  /** True while the card-expand overlay is still covering the preview. */
+  expanding?: boolean;
 }
 
 export default function CaptureScreen({
@@ -19,8 +29,24 @@ export default function CaptureScreen({
   onBack,
   onImageReady,
   showToast,
+  expanding = false,
 }: CaptureScreenProps) {
   const [busy, setBusy] = useState(false);
+  const chrome = useRef(new Animated.Value(expanding ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (expanding) {
+      chrome.setValue(0);
+      return;
+    }
+    Animated.timing(chrome, {
+      toValue: 1,
+      duration: 320,
+      delay: 40,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [chrome, expanding]);
 
   const pick = async (source: 'camera' | 'library') => {
     try {
@@ -78,15 +104,17 @@ export default function CaptureScreen({
 
   return (
     <SafeAreaView style={sharedStyles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.topBar}>
-        <Pressable onPress={onBack} style={styles.backBtn} hitSlop={12}>
-          <ArrowLeft size={22} color={colors.text} />
-        </Pressable>
-        <Text style={styles.topTitle} numberOfLines={1}>
-          {effect.name}
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <Animated.View style={{ opacity: chrome }} pointerEvents={expanding ? 'none' : 'auto'}>
+        <View style={styles.topBar}>
+          <Pressable onPress={onBack} style={styles.backBtn} hitSlop={12}>
+            <ArrowLeft size={22} color={colors.text} />
+          </Pressable>
+          <Text style={styles.topTitle} numberOfLines={1}>
+            {effect.name}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </Animated.View>
 
       <View style={styles.content}>
         <BeforeAfterPeek
@@ -96,14 +124,19 @@ export default function CaptureScreen({
           borderRadius={18}
         />
 
-        <Text style={styles.description}>{effect.description}</Text>
-        <Text style={styles.promptLabel}>What this does</Text>
-        <Text style={styles.prompt} numberOfLines={3}>
-          {effect.prompt}
-        </Text>
+        <Animated.View style={{ opacity: chrome }} pointerEvents={expanding ? 'none' : 'auto'}>
+          <Text style={styles.description}>{effect.description}</Text>
+          <Text style={styles.promptLabel}>What this does</Text>
+          <Text style={styles.prompt} numberOfLines={3}>
+            {effect.prompt}
+          </Text>
+        </Animated.View>
       </View>
 
-      <View style={styles.actions}>
+      <Animated.View
+        style={[styles.actions, { opacity: chrome }]}
+        pointerEvents={expanding ? 'none' : 'auto'}
+      >
         {busy ? (
           <View style={styles.busyRow}>
             <ActivityIndicator color={colors.accent} />
@@ -128,7 +161,7 @@ export default function CaptureScreen({
             </Pressable>
           </>
         )}
-      </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
